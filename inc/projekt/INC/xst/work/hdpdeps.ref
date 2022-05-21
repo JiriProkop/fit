@@ -1,0 +1,11 @@
+V3 6
+FL C:/terminal/uart.vhd 2022/05/07.15:27:50 O.40d
+EN work/UART_RX 1651930080 FL C:/terminal/uart.vhd PB ieee/std_logic_1164 1296775758 \
+      PB ieee/STD_LOGIC_UNSIGNED 1296775760
+AR work/UART_RX/behavioral 1651930081 \
+      FL C:/terminal/uart.vhd EN work/UART_RX 1651930080 \
+      AR work/UART_FSM/behavioral 1651930079
+FL C:/terminal/uart_fsm.vhd 2022/05/07.15:09:15 O.40d
+EN work/UART_FSM 1651930078 FL C:/terminal/uart_fsm.vhd PB ieee/std_logic_1164 1296775758
+AR work/UART_FSM/behavioral 1651930079 \
+      FL C:/terminal/uart_fsm.vhd EN work/UART_FSM 1651930078

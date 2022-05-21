@@ -1,0 +1,12 @@
+V3 6
+FL C:/terminal/student_test/work/uart.vhd 2022/05/06.19:02:53 O.40d
+EN work/UART_RX 1651857680 FL C:/terminal/student_test/work/uart.vhd \
+      PB ieee/std_logic_1164 1296775758 PB ieee/STD_LOGIC_UNSIGNED 1296775760
+AR work/UART_RX/behavioral 1651857681 \
+      FL C:/terminal/student_test/work/uart.vhd EN work/UART_RX 1651857680 \
+      AR work/UART_FSM/behavioral 1651857679
+FL C:/terminal/student_test/work/uart_fsm.vhd 2022/05/06.19:02:53 O.40d
+EN work/UART_FSM 1651857678 FL C:/terminal/student_test/work/uart_fsm.vhd \
+      PB ieee/std_logic_1164 1296775758
+AR work/UART_FSM/behavioral 1651857679 \
+      FL C:/terminal/student_test/work/uart_fsm.vhd EN work/UART_FSM 1651857678

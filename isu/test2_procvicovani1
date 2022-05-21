@@ -1,0 +1,96 @@
+%include "rw32-2021.inc"
+
+section .data
+    ar1 dw 1, 2, 3, 4, 5, 6, 8
+    ar2 dw 1, 2, 3, 4, 5, 6, 9
+    pA dd 2, 3, 4, 5, 6, 7
+    N dd 6
+    x dd 8
+
+section .text
+CMAIN:
+push ebp
+mov ebp,esp
+
+;call task21
+
+push x
+push N
+push pA
+call task22
+
+add esp, 12
+
+pop ebp
+ret
+
+
+task21:
+
+    mov eax, ar1
+    mov ebx, ar2
+    mov ecx, 7
+    mov edx, 0
+
+    for:
+        mov si, [eax + edx]
+        mov di, [ebx + edx]   
+        cmp si, di
+        jne areNot
+        add edx, 2
+        loop for
+    jmp are
+
+    areNot:
+        mov eax, 0
+        ret
+    
+    are:
+        mov eax, 1
+        ret
+
+task22:
+push ebp
+mov ebp,esp
+
+; pA = [ebp + 8]
+; N = [ebp + 12]
+; x = [ebp + 16]
+
+cmp [ebp + 8], dword 0
+ja ok1
+mov eax, -1
+pop ebp
+ret
+
+ok1:
+mov eax, [ebp + 12]
+cmp [eax], dword 0
+ja ok2
+
+mov eax, -1
+pop ebp
+ret
+
+ok2:
+
+push ebx
+push ecx
+mov eax, [ebp + 8]  ;adresa -> aray
+mov ebx, [ebp + 16] ;to co hledam
+mov ebx, [ebx]
+mov ecx, [ebp + 12] ;loop number
+mov ecx, [ecx]
+laso:
+    cmp [eax], ebx
+    je equal
+    add eax, 4
+    loop laso
+mov eax, -1
+
+equal:
+pop ecx
+pop ebx
+
+pop ebp
+ret

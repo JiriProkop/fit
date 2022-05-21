@@ -1,0 +1,911 @@
+#!/bin/sh
+
+# Author: Jiri Prokop
+# Login : xproko47 
+
+export POSIXLY_CORRECT=yes
+export LC_ALL=C
+
+print_help()
+{
+    echo "Usage: corona [-h] [FILTERS] [COMMAND] [LOG [LOG2 [...]]"
+    echo "                                                     "
+    echo "If there's no log file as an argument, you can write log"
+    echo "into terminal. Press 'ctrl + d' to end the input."
+    echo "                                                    "
+    echo "Commands:"
+    echo "  infected    -sum of infected people"
+    echo "  merge       -merge several logs into one, keeps original order"
+    echo "  gender      -infected listed by gender"
+    echo "  age         -infected listed by age intervals"
+    echo "  daily       -infected listed by days"
+    echo "  monthly     -infected listed by months"
+    echo "  yearly      -infected listed by years"
+    echo "  countries   -infected listed by countries"
+    echo "  districts   -infected listed by districts"
+    echo "  regions     -infected listed by regions"
+    echo " "
+    echo "Filters:"
+    echo "Can be combination of several filters listed below, each can be used only once."
+    echo "  -a DATETIME     -consider only entries after DATETIME"
+    echo "  -b DATETIME     -consider only entries before DATETIME"
+    echo "  -g GENDER       -consider only entries with given gender(M/Z)"
+    echo "  -s [WIDTH]      -shows data in histograms"
+    echo "                  Works for: gender, age, daily, monthly, yearly, " 
+    echo "                             countries, districts and regions."
+    echo "                  [WIDTH] sets max width of histograms"
+
+}
+
+filter_argument_check()
+{
+    case $2 in
+        *.csv)
+            >&2 echo "Missing filter argument"
+            exit 1
+            ;;
+        *.gz)
+            >&2 echo "Missing filter argument"
+            exit 1
+            ;;
+        *.bz2)
+            >&2 echo "Missing filter argument"
+            exit 1
+            ;;
+    esac
+    if  [ "$2" = "merge" ] || [ "$2" = "infected" ] || [ "$2" = "gender" ] || [ "$2" = "age" ] || [ "$2" = "daily" ] ||
+        [ "$2" = "monthly" ] || [ "$2" = "yearly" ] || [ "$2" = "countries" ] || [ "$2" = "districts" ] || [ "$2" = "regions" ]
+    then
+        >&2 echo "Missing filter argument"
+        exit 1
+    fi
+}
+
+COMMAND=""
+GRAPH=""
+DATETIME=""
+DATETIME_INFO=""
+WIDTH=""
+FILE="cat "
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        -h)
+            print_help
+            exit 0
+            ;;
+        -a | -b)
+            filter_argument_check "$@"
+            DATETIME_INFO=$1
+            DATETIME=$2
+            shift
+            shift
+            ;;
+        -g)
+            filter_argument_check "$@"
+            GENDER=$2
+            shift
+            shift
+            ;;
+        -s)
+            GRAPH="1"
+            if [ -n "${2##*[!0-9]*}" ]
+            then
+                WIDTH=$2
+                shift
+            fi
+            shift
+            ;;
+        infected | gender | age | daily | monthly | yearly | countries | districts | regions)
+            COMMAND=$1
+            shift
+            ;;
+        *.gz)
+            if [ "$FILE" !=  "cat " ]; then
+                FILE="$FILE $1"
+            else
+                FILE="gzip -d -c $1"
+            fi
+            shift
+            ;;
+        *.bz2)
+            if [ "$FILE" != "cat " ]; then
+                FILE="$FILE $1"
+            else
+                FILE="bzip2 -d -c $1"
+            fi
+            shift
+            ;;
+        *.csv)
+            if [ "$1" = "infected-jan22/infected-22-01-*.csv" ]; then
+                exit 0
+            fi
+
+            if [ "$FILE" != "cat " ]; then
+                FILE="$FILE $1"
+            else
+                FILE="cat $1"
+            fi
+            shift
+            ;;
+        merge)
+            ;;
+        *)
+            FILE="cat "
+            ;;
+    esac
+done
+
+
+#managing filters
+FILTER1=""
+if [ "$DATETIME" ]; then
+    if [ "$DATETIME_INFO" = "-a" ]; then
+        FILTER1="awk -vDATETIME=\"$DATETIME\" -F, '{if(NR == 1) {print \$0} else {if(DATETIME <= \$2) print \$0}}'"
+    fi
+    if [ "$DATETIME_INFO" = "-b" ]; then
+        FILTER1="awk -vDATETIME=\"$DATETIME\" -F, '{if(NR == 1) {print \$0} else {if(DATETIME >= \$2) print \$0}}'"
+    fi
+fi
+
+FILTER2=""
+if [ "$GENDER" ]; then
+    FILTER2="awk -F, -vGENDER=\"$GENDER\" '{if(NR == 1) {print \$0} 
+                                            else {if(\$4 == GENDER) print \$0}}'"
+fi
+
+FILTER="cat "
+if [ "$FILTER1" ] && [ "$FILTER2" ]; then
+    FILTER=$FILTER1" | "$FILTER2
+else
+    if [ "$FILTER1" ]; then
+    FILTER=$FILTER1
+    fi
+    if [ "$FILTER2" ]; then
+    FILTER=$FILTER2
+    fi
+fi
+
+if [ "$COMMAND" = "" ]; then
+    COMMAND="merge"
+fi
+
+#data validity check
+DATE_CHECK="awk -F ',' 'split(\$2, a, \"-\") {if(NR == 1) {print \$0; next}
+                    else if (\$2 == \"\")
+                    {
+                        print \$0
+                        next
+                    }
+                    else if (\$2 ~ /[.]/ || \$2 ~ /[e]/)
+                    {
+                        print \"Invalid date: \"\$0 > \"/dev/stderr\"
+                        next
+                    }
+                    else if(a[2] == \"01\")
+                    {
+                        if(a[3] > \"31\")
+                        {
+                            print \"Invalid date: \"\$0 > \"/dev/stderr\"
+                            next
+                        }
+                    }
+                    else if(a[2] == \"02\")
+                    {
+                        if(a[1] % 400 == 0 || (a[1] % 4 == 0 && a[1] % 100 != 0))
+                        {
+                            if(a[3] > \"29\")
+                            {
+                                print \"Invalid date: )\$0\" > \"/dev/stderr\"
+                                next
+                            }
+                        }
+                        else if(a[3] > \"28\")
+                        {
+                            print \"Invalid date: \"\$0 > \"/dev/stderr\"
+                            next
+                        }
+                    }
+                    else if(a[2] == \"03\" || a[2] == \"05\" || a[2] == \"07\" ||
+                            a[2] == \"08\" || a[2] == \"10\" || a[2] == \"12\")
+                    {
+                        if(a[3] > \"31\")
+                        {
+                            print \"Invalid date: \"\$0 > \"/dev/stderr\"
+                            next
+                        }
+                    }
+                    else if(a[2] == \"04\" || a[2] == \"06\" || a[2] == \"09\" ||
+                            a[2] == \"11\")
+                    {
+                        if(a[3] > \"30\")
+                        {
+                            print \"Invalid date: \"\$0 > \"/dev/stderr\"
+                            next
+                        }
+                    }
+                    else if(a[2] < \"01\" || a[2] > \"12\" || a[3] < \"01\")
+                    {
+                        print \"Invalid date: \"\$0 > \"/dev/stderr\"
+                        next
+                    }
+                print \$0 }' "
+
+# age vailidty check
+AGE_CHECK="awk -F ',' 'age=\"\$3\" {if(NR == 1)
+                    {
+                        print \$0
+                        next
+                    }
+                    else if (age ~ /[.]/ || age ~ /[e]/)
+                    {
+                        print \"Invalid age: \"\$0 > \"/dev/stderr\"
+                        next
+                    }
+                    else if(age > 0)
+                    {
+                        print \"Invalid age: \"\$0 > \"/dev/stderr\"
+                        next
+                    }
+                    print \$0} '"
+if [ "$COMMAND" != "merge" ]; then
+    FILE=$FILE" | "$DATE_CHECK
+    FILE=$FILE" | "$AGE_CHECK
+fi
+
+#commands
+case "$COMMAND" in
+    merge)
+        eval "$FILE | $FILTER | awk '!x[\$0]++'"
+        ;;
+    infected)
+        eval "$FILE | $FILTER" | awk -F, -vFILTER="$FILTER" 'BEGIN{if(FILTER == "cat ") c--}
+        {c++} END{printf("%d\n", c)}'
+        ;;
+    gender)
+        eval "$FILE | $FILTER" | awk -F ',' -vGRAPH="$GRAPH" -vWIDTH="$WIDTH" 'gender=$4 {if(gender == "pohlavi") next}
+                            {if(gender == "M") m++}
+                            {if(gender == "Z") z++}
+                            {if(gender == "") none++}
+                END {if(GRAPH == "")
+                {
+                    printf("M: %d\nZ: %d\n", m, z)
+                    if(none != 0) printf("None: %d\n", none)
+                }
+                else 
+                {   
+                    if(WIDTH == "")
+                    {
+                        rate = 100000
+                    }
+                    else
+                    {
+                        if(m > z)
+                        {
+                            max = m
+                        }
+                        else
+                        {
+                            max = z
+                        }
+                        
+                        rate = max/WIDTH                        
+                    }
+                    printf("M: ")
+                    for(i = 0; i < m / rate - 1; i++)
+                    {
+                        printf("#")
+                    }
+
+                    printf("\nZ: ")
+                    for(i = 0; i < z / rate - 1; i++)
+                    {
+                        printf("#")
+                    }
+
+                    printf("\n")
+                    if(none > 0)
+                    {
+                        printf("None: ")
+                        for(i = 0; i < none / rate - 1; i++)
+                        {
+                            printf("#")
+                        }
+                        printf("\n")
+                    }                 
+                }}'
+        ;;
+    age)
+        eval "$FILE | $FILTER" | awk -F ',' -vGRAPH="$GRAPH" -vWIDTH="$WIDTH" 'age=$3 {if(NR == "vek") next}
+                           {if(age >= 0 && age <=  5) c[0]++}
+                           {if(age >  5 && age <= 15) c[1]++}
+                           {if(age > 15 && age <= 25) c[2]++}
+                           {if(age > 25 && age <= 35) c[3]++}
+                           {if(age > 35 && age <= 45) c[4]++}
+                           {if(age > 45 && age <= 55) c[5]++}
+                           {if(age > 55 && age <= 65) c[6]++}
+                           {if(age > 65 && age <= 75) c[7]++}
+                           {if(age > 75 && age <= 85) c[8]++}
+                           {if(age > 85 && age <= 95) c[9]++}
+                           {if(age > 95 && age <= 105)c[10]++}
+                           {if(age > 105             )c[11]++}
+                           {if(age==""              )none++}
+                END { if(GRAPH == "")
+                {
+                    printf("0-5   : %d\n6-15  : %d\n16-25 : %d\n26-35 : %d\n", c[0], c[1], c[2], c[3])
+                    printf("36-45 : %d\n46-55 : %d\n56-65 : %d\n66-75 : %d\n", c[4], c[5], c[6], c[7])
+                    printf("76-85 : %d\n86-95 : %d\n96-105: %d\n>105  : %d\n", c[8], c[9], c[10], c[11])
+                    if(none != 0) printf("None: %d\n", none)
+                }
+                else
+                {
+                    if(WIDTH == "")
+                    {
+                        rate = 10000
+                    }
+                    else
+                    {
+                        max = c[0]
+                        for(j = 1; j < 12; j++)
+                        {
+                            if(c[j] > max)
+                            {
+                                max = c[j]
+                            }
+                        }
+                        
+                        rate = max/WIDTH                        
+                    }
+
+                    printf("0-5   : ")
+                    for(i = 0; i < c[0] / rate - 1; i++)
+                    {
+                        printf("#")
+                    }
+
+                    printf("\n6-15  : ")
+                    for(i = 0; i < c[1] / rate - 1; i++)
+                    {
+                        printf("#")
+                    }
+                    
+                    printf("\n16-25 : ")
+                    for(i = 0; i < c[2] / rate - 1; i++)
+                    {
+                        printf("#")
+                    }
+
+                    printf("\n26-35 : ")
+                    for(i = 0; i < c[3] / rate - 1; i++)
+                    {
+                        printf("#")
+                    }
+
+                    printf("\n36-45 : ")
+                    for(i = 0; i < c[4] / rate - 1; i++)
+                    {
+                        printf("#")
+                    }
+
+                    printf("\n46-55 : ")
+                    for(i = 0; i < c[5] / rate - 1; i++)
+                    {
+                        printf("#")
+                    }
+
+                    printf("\n56-65 : ")
+                    for(i = 0; i < c[6] / rate - 1; i++)
+                    {
+                        printf("#")
+                    }
+
+                    printf("\n66-75 : ")
+                    for(i = 0; i < c[7] / rate - 1; i++)
+                    {
+                        printf("#")
+                    }
+
+                    printf("\n76-85 : ")
+                    for(i = 0; i < c[8] / rate - 1; i++)
+                    {
+                        printf("#")
+                    }
+
+                    printf("\n86-95 : ")
+                    for(i = 0; i < c[9] / rate - 1; i++)
+                    {
+                        printf("#")
+                    }
+
+                    printf("\n96-105: ")
+                    for(i = 0; i < c[10] / rate - 1; i++)
+                    {
+                        printf("#")
+                    }
+
+                    printf("\n>105  : ")
+                    for(i = 0; i < c[11] / rate - 1; i++)
+                    {
+                        printf("#")
+                    }
+
+                    printf("\n")
+                    if(none > 0)
+                    {
+                        printf("None  : ")
+                        for(i = 0; i < none / rate - 1; i++)
+                        {
+                            printf("#")
+                        }
+                        printf("\n")
+                    }
+                }}'
+        ;;
+    daily)
+        eval "$FILE | $FILTER" | sort -t ',' -k 2 | awk -F ',' -vGRAPH="$GRAPH" -vWIDTH="$WIDTH" 'date=" ", date=$2 {if(date == "datum") next
+            if(WIDTH == "")
+            {
+                WIDTH = 500
+            }
+            if(flag)
+            {
+                if(date==prev_date)
+                {
+                    c++
+                }
+                else
+                {
+                    if(GRAPH == "")
+                    {
+                        printf("%s: %d\n", prev_date, c)
+                    }
+                    else
+                    {
+                        printf("%s: ", prev_date)
+                        for(i = 0; i < c / WIDTH - 1; i++)
+                        {
+                            printf("#")
+                        }
+                        printf("\n")
+                    }
+                
+                    c=1
+                    prev_date=date
+                }
+            }
+            else
+            {
+                if(date=="")
+                {
+                    none++
+                    next
+                }
+                prev_date=date
+                c++
+                flag=1
+            }
+        }
+        END {if(GRAPH == "")
+        {
+            if(c != 0) printf("%s: %d\n", prev_date, c)
+            if(none != 0) printf("None: %d\n", none) 
+        }
+        else
+        {
+            if(c != 0)
+            {
+                printf("%s: ", prev_date)
+                for(i = 0; i < c / WIDTH - 1; i++)
+                {
+                    printf("#")
+                }
+                printf("\n")
+            }
+            if(none != 0)
+            {
+                printf("None: ")
+                for(i = 0; i < none / WIDTH - 1; i++)
+                {
+                    printf("#")
+                }
+                printf("\n")
+            }
+        }}'   
+        ;;
+    monthly)
+        eval "$FILE | $FILTER" | sort -t ',' -k 2 | awk -F ',' -vGRAPH="$GRAPH" -vWIDTH="$WIDTH" 'date=" ", date=$2 {
+            if(date == "datum")
+                next
+            if(WIDTH == "")
+            {
+                WIDTH = 10000
+            }
+            else
+            {
+                GRAPH=""
+            }
+            if(date=="")
+            {
+                none++
+                next
+            }
+            else
+            {
+                split(date, a, "-")
+                date=a[1]"-"a[2]
+            }
+            if(flag)
+            {
+                if(date==prev_date)
+                    c++
+                else
+                {
+                    if(GRAPH == "")
+                    {
+                        printf("%s: %d\n", prev_date, c)
+                        
+                    }
+                    else
+                    {
+                        
+                        printf("%s: ", prev_date)
+                        for(i = 0; i < c / WIDTH - 1; i++)
+                        {
+                            printf("#")
+                        }
+                        printf("\n")
+                    }
+                
+                    c=1
+                    prev_date=date
+                }
+            }
+            else
+            {
+                
+                prev_date=date
+                c++
+                flag=1
+            }
+        }
+        END {if(GRAPH == "")
+        {
+            if(c != 0) printf("%s: %d\n", prev_date, c)
+            if(none != 0) printf("None: %d\n", none) 
+        }
+        else
+        {
+            if(c != 0)
+            {
+                printf("%s: ", prev_date)
+                for(i = 0; i < c / WIDTH - 1; i++)
+                {
+                    printf("#")
+                }
+                printf("\n")
+            }
+            if(none != 0)
+            {
+                printf("None: ")
+                for(i = 0; i < none / WIDTH - 1; i++)
+                {
+                    printf("#")
+                }
+                printf("\n")
+            }
+        }}'  
+        ;;
+    yearly)
+        eval "$FILE | $FILTER" | sort -t ',' -k 2 | awk -F ',' -vGRAPH="$GRAPH" -vWIDTH="$WIDTH" 'date=" ", date=$2 {
+            if(WIDTH == "")
+            {
+                WIDTH = 100000
+            }
+            else
+            {
+                GRAPH=""
+            }
+            if(date == "datum")
+                next
+            if(date=="")
+            {
+                none++
+                next
+            }
+            else
+            {
+                split(date, a, "-")
+                date=a[1]
+            }
+            if(flag)
+            {
+                if(date==prev_date)
+                    c++
+                else
+                {
+                    if(GRAPH == "")
+                    {
+                        printf("%s: %d\n", prev_date, c)
+                    }
+                    else
+                    {
+                        printf("%s: ", prev_date)
+                        for(i = 0; i < c / WIDTH - 1; i++)
+                        {
+                            printf("#")
+                        }
+                        printf("\n")
+                    }
+                
+                    c=1
+                    prev_date=date
+                }
+            }
+            else
+            {
+                prev_date=date
+                c++
+                flag=1
+            }
+        }
+        END {if(GRAPH == "")
+            {
+                if(c != 0) printf("%s: %d\n", prev_date, c)
+                if(none != 0) printf("None: %d\n", none) 
+            }
+            else
+            {
+                if(c != 0)
+                {
+                    printf("%s: ", prev_date)
+                    for(i = 0; i < c / WIDTH - 1; i++)
+                    {
+                        printf("#")
+                    }
+                    printf("\n")
+                }
+                if(none != 0)
+                {
+                    printf("None: ")
+                    for(i = 0; i < none / WIDTH - 1; i++)
+                    {
+                        printf("#")
+                    }
+                    printf("\n")
+                }
+            }
+        }'
+        ;;
+    countries)
+        eval "$FILE | $FILTER" | sort -t ',' -k 8 | awk -F ',' -vGRAPH="$GRAPH" -vWIDTH="$WIDTH" 'cntr=$8 {
+            if(cntr == "nakaza_zeme_csu_kod")
+                next
+            if(WIDTH == "")
+            {
+                WIDTH = 100
+            }
+            else
+            {
+                GRAPH=""
+            }
+            if(cntr == "")
+            {
+                next
+            }
+            if(cntr!="CZ")
+            {
+                if(flag)
+                {
+                    if(cntr==prev_cntr)
+                        c++
+                    else
+                    {
+                        if(GRAPH == "")
+                        {
+                            printf("%s: %d\n", prev_cntr, c)
+                        }
+                        else
+                        {
+                            printf("%s: ", prev_cntr)
+                            for(i = 0; i < c / WIDTH - 1; i++)
+                            {
+                                printf("#")
+                            }
+                            printf("\n")
+                        }
+                    
+                        c=1
+                        prev_cntr=cntr
+                    }
+                }
+                else
+                {
+                    prev_cntr=cntr
+                    c++
+                    flag=1
+                }
+            }
+        }
+        END {if(GRAPH == "")
+            {
+                if(c != 0) printf("%s: %d\n", prev_cntr, c)
+            }
+            else
+            {
+                if(c != 0)
+                {
+                    printf("%s: ", prev_cntr)
+                    for(i = 0; i < c / WIDTH - 1; i++)
+                    {
+                        printf("#")
+                    }
+                    printf("\n")
+                }
+            }
+        }'
+        ;;
+    districts)
+        eval "$FILE | $FILTER" | sort -t ',' -k 6 | awk -F ',' -vGRAPH="$GRAPH" -vWIDTH="$WIDTH" 'distr=" ", distr=$6 {
+            if(distr == "okres_lau_kod")
+                next
+            if(WIDTH == "")
+            {
+                WIDTH = 1000
+            }
+            else
+            {
+                GRAPH=""
+            }
+            if(distr=="")
+            {
+                none++
+                next
+            }
+            if(flag)
+            {
+                if(distr==prev_distr)
+                    c++
+                else
+                {
+                    if(GRAPH == "")
+                    {
+                        printf("%s: %d\n", prev_distr, c)
+                    }
+                    else
+                    {
+                        printf("%s: ", prev_distr)
+                        for(i = 0; i < c / WIDTH - 1; i++)
+                        {
+                            printf("#")
+                        }
+                        printf("\n")
+                    }
+
+                    c=1
+                    prev_distr=distr
+                }
+            }
+            else
+            {
+                prev_distr=distr
+                c++
+                flag=1
+            }
+        }
+        END {if(GRAPH == "")
+            {
+                if(c != 0) 
+                {
+                    printf("%s: %d\n", prev_distr, c)
+                }
+                if(none != 0)
+                {
+                    printf("None: %d\n", none)
+                }
+            }
+            else
+            {
+                if(c != 0)
+                {
+                    printf("%s: ", prev_distr)
+                    for(i = 0; i < c / WIDTH - 1; i++)
+                    {
+                        printf("#")
+                    }
+                    printf("\n")
+                }
+                if(none != 0)
+                {
+                    printf("None: ")
+                    for(i = 0; i < none / WIDTH - 1; i++)
+                    {
+                        printf("#")
+                    }
+                    printf("\n")
+                }
+            }
+        }'
+        ;;
+    regions)
+        eval "$FILE | $FILTER" | sort -t ',' -k 5 | awk -F ',' -vGRAPH="$GRAPH" -vWIDTH="$WIDTH" 're=" ", reg=$5 {
+            if(reg == "kraj_nuts_kod")
+                next
+            if(WIDTH == "")
+            {
+                WIDTH = 10000
+            }
+            else
+            {
+                GRAPH=""
+            }
+            if(reg=="")
+            {
+                none++
+                next
+            }
+            if(flag)
+            {
+                if(reg==prev_reg)
+                    c++
+                else
+                {
+                    if(GRAPH == "")
+                    {
+                        printf("%s: %d\n", prev_reg, c)
+                    }
+                    else
+                    {
+                        printf("%s: ", prev_reg)
+                        for(i = 0; i < c / WIDTH - 1; i++)
+                        {
+                            printf("#")
+                        }
+                        printf("\n")
+                    }
+
+                    c=1
+                    prev_reg=reg
+                }
+            }
+            else
+            {
+                prev_reg=reg
+                c++
+                flag=1
+            }
+        }
+        END {if(GRAPH == "")
+            {
+                if(c != 0) 
+                {
+                    printf("%s: %d\n", prev_reg, c)
+                }
+                if(none != 0)
+                {
+                    printf("None: %d\n", none)
+                }
+            }
+            else
+            {
+                if(c != 0)
+                {
+                    printf("%s: ", prev_reg)
+                    for(i = 0; i < c / WIDTH - 1; i++)
+                    {
+                        printf("#")
+                    }
+                    printf("\n")
+                }
+                if(none != 0)
+                {
+                    printf("None: ")
+                    for(i = 0; i < none / WIDTH - 1; i++)
+                    {
+                        printf("#")
+                    }
+                    printf("\n")
+                }
+            }
+        }'
+        ;;
+esac

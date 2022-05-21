@@ -1,0 +1,4 @@
+AR uart_fsm behavioral C:/terminal/student_test/work/uart_fsm.vhd sub00/vhpl01 1651857679
+EN uart_fsm NULL C:/terminal/student_test/work/uart_fsm.vhd sub00/vhpl00 1651857678
+AR uart_rx behavioral C:/terminal/student_test/work/uart.vhd sub00/vhpl03 1651857681
+EN uart_rx NULL C:/terminal/student_test/work/uart.vhd sub00/vhpl02 1651857680

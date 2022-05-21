@@ -1,0 +1,48 @@
+xst -intstyle ise -ifn "C:/terminal/INC/UART_RX.xst" -ofn "C:/terminal/INC/UART_RX.syr" 
+ngdbuild -intstyle ise -dd _ngo -nt timestamp -i -p xc3s50-pq208-5 UART_RX.ngc UART_RX.ngd  
+map -intstyle ise -p xc3s50-pq208-5 -cm area -ir off -pr off -c 100 -o UART_RX_map.ncd UART_RX.ngd UART_RX.pcf 
+par -w -intstyle ise -ol high -t 1 UART_RX_map.ncd UART_RX.ncd UART_RX.pcf 
+trce -intstyle ise -v 3 -s 5 -n 3 -fastpaths -xml UART_RX.twx UART_RX.ncd -o UART_RX.twr UART_RX.pcf 
+xst -intstyle ise -ifn "C:/terminal/INC/UART_RX.xst" -ofn "C:/terminal/INC/UART_RX.syr" 
+ngdbuild -intstyle ise -dd _ngo -nt timestamp -i -p xc3s50-pq208-5 UART_RX.ngc UART_RX.ngd  
+map -intstyle ise -p xc3s50-pq208-5 -cm area -ir off -pr off -c 100 -o UART_RX_map.ncd UART_RX.ngd UART_RX.pcf 
+par -w -intstyle ise -ol high -t 1 UART_RX_map.ncd UART_RX.ncd UART_RX.pcf 
+trce -intstyle ise -v 3 -s 5 -n 3 -fastpaths -xml UART_RX.twx UART_RX.ncd -o UART_RX.twr UART_RX.pcf 
+xst -intstyle ise -ifn "C:/terminal/INC/UART_RX.xst" -ofn "C:/terminal/INC/UART_RX.syr" 
+ngdbuild -intstyle ise -dd _ngo -nt timestamp -i -p xc3s50-pq208-5 UART_RX.ngc UART_RX.ngd  
+map -intstyle ise -p xc3s50-pq208-5 -cm area -ir off -pr off -c 100 -o UART_RX_map.ncd UART_RX.ngd UART_RX.pcf 
+par -w -intstyle ise -ol high -t 1 UART_RX_map.ncd UART_RX.ncd UART_RX.pcf 
+trce -intstyle ise -v 3 -s 5 -n 3 -fastpaths -xml UART_RX.twx UART_RX.ncd -o UART_RX.twr UART_RX.pcf 
+xst -intstyle ise -ifn "C:/terminal/INC/UART_RX.xst" -ofn "C:/terminal/INC/UART_RX.syr" 
+ngdbuild -intstyle ise -dd _ngo -nt timestamp -i -p xc3s50-pq208-5 UART_RX.ngc UART_RX.ngd  
+map -intstyle ise -p xc3s50-pq208-5 -cm area -ir off -pr off -c 100 -o UART_RX_map.ncd UART_RX.ngd UART_RX.pcf 
+par -w -intstyle ise -ol high -t 1 UART_RX_map.ncd UART_RX.ncd UART_RX.pcf 
+trce -intstyle ise -v 3 -s 5 -n 3 -fastpaths -xml UART_RX.twx UART_RX.ncd -o UART_RX.twr UART_RX.pcf 
+xst -intstyle ise -ifn "C:/terminal/INC/UART_RX.xst" -ofn "C:/terminal/INC/UART_RX.syr" 
+xst -intstyle ise -ifn "C:/terminal/INC/UART_RX.xst" -ofn "C:/terminal/INC/UART_RX.syr" 
+ngdbuild -intstyle ise -dd _ngo -nt timestamp -i -p xc3s50-pq208-5 UART_RX.ngc UART_RX.ngd  
+map -intstyle ise -p xc3s50-pq208-5 -cm area -ir off -pr off -c 100 -o UART_RX_map.ncd UART_RX.ngd UART_RX.pcf 
+par -w -intstyle ise -ol high -t 1 UART_RX_map.ncd UART_RX.ncd UART_RX.pcf 
+trce -intstyle ise -v 3 -s 5 -n 3 -fastpaths -xml UART_RX.twx UART_RX.ncd -o UART_RX.twr UART_RX.pcf 
+xst -intstyle ise -ifn "C:/terminal/INC/UART_RX.xst" -ofn "C:/terminal/INC/UART_RX.syr" 
+xst -intstyle ise -ifn "C:/terminal/INC/UART_RX.xst" -ofn "C:/terminal/INC/UART_RX.syr" 
+xst -intstyle ise -ifn "C:/terminal/INC/UART_RX.xst" -ofn "C:/terminal/INC/UART_RX.syr" 
+ngdbuild -intstyle ise -dd _ngo -nt timestamp -i -p xc3s50-pq208-5 UART_RX.ngc UART_RX.ngd  
+map -intstyle ise -p xc3s50-pq208-5 -cm area -ir off -pr off -c 100 -o UART_RX_map.ncd UART_RX.ngd UART_RX.pcf 
+par -w -intstyle ise -ol high -t 1 UART_RX_map.ncd UART_RX.ncd UART_RX.pcf 
+trce -intstyle ise -v 3 -s 5 -n 3 -fastpaths -xml UART_RX.twx UART_RX.ncd -o UART_RX.twr UART_RX.pcf 
+xst -intstyle ise -ifn "C:/terminal/INC/UART_RX.xst" -ofn "C:/terminal/INC/UART_RX.syr" 
+ngdbuild -intstyle ise -dd _ngo -nt timestamp -i -p xc3s50-pq208-5 UART_RX.ngc UART_RX.ngd  
+map -intstyle ise -p xc3s50-pq208-5 -cm area -ir off -pr off -c 100 -o UART_RX_map.ncd UART_RX.ngd UART_RX.pcf 
+par -w -intstyle ise -ol high -t 1 UART_RX_map.ncd UART_RX.ncd UART_RX.pcf 
+trce -intstyle ise -v 3 -s 5 -n 3 -fastpaths -xml UART_RX.twx UART_RX.ncd -o UART_RX.twr UART_RX.pcf 
+xst -intstyle ise -ifn "C:/terminal/INC/UART_RX.xst" -ofn "C:/terminal/INC/UART_RX.syr" 
+ngdbuild -intstyle ise -dd _ngo -nt timestamp -i -p xc3s50-pq208-5 UART_RX.ngc UART_RX.ngd  
+map -intstyle ise -p xc3s50-pq208-5 -cm area -ir off -pr off -c 100 -o UART_RX_map.ncd UART_RX.ngd UART_RX.pcf 
+par -w -intstyle ise -ol high -t 1 UART_RX_map.ncd UART_RX.ncd UART_RX.pcf 
+trce -intstyle ise -v 3 -s 5 -n 3 -fastpaths -xml UART_RX.twx UART_RX.ncd -o UART_RX.twr UART_RX.pcf 
+xst -intstyle ise -ifn "C:/terminal/INC/UART_RX.xst" -ofn "C:/terminal/INC/UART_RX.syr" 
+ngdbuild -intstyle ise -dd _ngo -nt timestamp -i -p xc3s50-pq208-5 UART_RX.ngc UART_RX.ngd  
+map -intstyle ise -p xc3s50-pq208-5 -cm area -ir off -pr off -c 100 -o UART_RX_map.ncd UART_RX.ngd UART_RX.pcf 
+par -w -intstyle ise -ol high -t 1 UART_RX_map.ncd UART_RX.ncd UART_RX.pcf 
+trce -intstyle ise -v 3 -s 5 -n 3 -fastpaths -xml UART_RX.twx UART_RX.ncd -o UART_RX.twr UART_RX.pcf 

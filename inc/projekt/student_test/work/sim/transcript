@@ -1,0 +1,48 @@
+# do uart.fdo 
+# Model Technology ModelSim SE vcom 6.6d Compiler 2010.11 Nov  1 2010
+# -- Loading package standard
+# -- Loading package std_logic_1164
+# -- Compiling entity uart_fsm
+# -- Compiling architecture behavioral of uart_fsm
+# Model Technology ModelSim SE vcom 6.6d Compiler 2010.11 Nov  1 2010
+# -- Loading package standard
+# -- Loading package std_logic_1164
+# -- Loading package std_logic_arith
+# -- Loading package std_logic_unsigned
+# -- Compiling entity uart_rx
+# -- Compiling architecture behavioral of uart_rx
+# -- Loading entity uart_fsm
+# Model Technology ModelSim SE vcom 6.6d Compiler 2010.11 Nov  1 2010
+# -- Loading package standard
+# -- Loading package std_logic_1164
+# -- Loading package std_logic_arith
+# -- Loading package textio
+# -- Loading package std_logic_textio
+# -- Compiling entity testbench
+# -- Compiling architecture tb of testbench
+# -- Loading package std_logic_unsigned
+# -- Loading entity uart_rx
+# vsim -lib work -t 1ps -novopt testbench 
+# //  ModelSim SE 6.6d Nov  1 2010 
+# //
+# //  Copyright 1991-2010 Mentor Graphics Corporation
+# //              All Rights Reserved.
+# //
+# //  THIS WORK CONTAINS TRADE SECRET AND 
+# //  PROPRIETARY INFORMATION WHICH IS THE PROPERTY
+# //  OF MENTOR GRAPHICS CORPORATION OR ITS LICENSORS
+# //  AND IS SUBJECT TO LICENSE TERMS.
+# //
+# Loading std.standard
+# Loading ieee.std_logic_1164(body)
+# Loading ieee.std_logic_arith(body)
+# Loading std.textio(body)
+# Loading ieee.std_logic_textio(body)
+# Loading ieee.std_logic_unsigned(body)
+# Refreshing C:\terminal\student_test\work\sim\work.testbench(tb)
+# Loading work.testbench(tb)
+# Refreshing C:\terminal\student_test\work\sim\work.uart_rx(behavioral)
+# Loading work.uart_rx(behavioral)
+# Refreshing C:\terminal\student_test\work\sim\work.uart_fsm(behavioral)
+# Loading work.uart_fsm(behavioral)
+# 1
