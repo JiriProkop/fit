@@ -11,7 +11,7 @@ all:
 	make tail
 
 tail:
-	$(CC) $(CFLAGS) tail.c -o tail
+	$(CC) $(CFLAGS) tail.c -o $@
 
 clean:
 	rm tail
