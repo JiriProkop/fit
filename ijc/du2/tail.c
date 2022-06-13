@@ -13,14 +13,14 @@
 
 unsigned int lineC = 10;
 
-void line_count_check(char* argv[])
+void line_count_check(char *argv[])
 {
     if (strcmp("-n", argv[1]) == 0)
     {
-        if ((lineC = (unsigned int) atoi(argv[2])) == 0)
+        if ((lineC = (unsigned int)atoi(argv[2])) == 0)
         {
             fprintf(stderr, "invalid argument or 0 after '-n'!\n");
-            exit (-1);                    
+            exit(-1);
         }
     }
     else
@@ -31,11 +31,11 @@ void line_count_check(char* argv[])
 }
 
 // reorganizes the line_buffer so we can keep only lineC lines in it
-void line_add(char* line_buffer[])
+void line_add(char *line_buffer[])
 {
-    char* tmp1;
-    char* tmp2;
-    for(unsigned int i = 0; i < lineC; i++)
+    char *tmp1;
+    char *tmp2;
+    for (unsigned int i = 0; i < lineC; i++)
     {
         if (i == (lineC - 1))
         {
@@ -58,16 +58,16 @@ void line_add(char* line_buffer[])
     }
 }
 
-void lineRead(char fileName[], char* line_buffer[], int filePos)
+void lineRead(char fileName[], char *line_buffer[], int filePos)
 {
-    FILE* fp;
+    FILE *fp;
     if (filePos > 0)
     {
         fp = fopen(fileName, "r");
-        if(fp == NULL)
+        if (fp == NULL)
         {
             fprintf(stderr, "couldn't open the file!\n");
-            for(unsigned int i = 0; i < lineC; i++)
+            for (unsigned int i = 0; i < lineC; i++)
             {
                 free(line_buffer[i]);
             }
@@ -78,28 +78,31 @@ void lineRead(char fileName[], char* line_buffer[], int filePos)
     {
         fp = stdin;
     }
-    
+
     int c;
     int char_count = 0;
     bool flag = 1;
-    while((c = fgetc(fp)) != EOF)
+    while ((c = fgetc(fp)) != EOF)
     {
-        if(c == '\n')
+        if (c == '\n')
         {
             line_buffer[0][char_count] = '\0';
             char_count = 0;
             line_add(line_buffer);
             continue;
         }
-        if(char_count == (LINE_LIMIT - 1))
+        if (char_count == (LINE_LIMIT - 1))
         {
-            if(flag)
+            if (flag)
             {
                 fprintf(stderr, "line is bigger than line limit(%d)!\n", LINE_LIMIT);
             }
             line_buffer[0][char_count] = '\0';
             char_count = 0;
-            while(c != EOF || c != '\n') {c = fgetc(fp);}
+            while (c != EOF || c != '\n')
+            {
+                c = fgetc(fp);
+            }
             line_add(line_buffer);
             continue;
         }
@@ -112,29 +115,29 @@ void lineRead(char fileName[], char* line_buffer[], int filePos)
     }
 }
 
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
     int filePos = -1; // -1 = input is read from stdin
                       // otherwise position of filename in argv
 
     switch (argc)
     {
-        case 1:
-            break;
-        case 2: 
-            filePos = 1;
-            break;
-        case 3:
-            line_count_check(argv);
-            break;
-        case 4:
-            line_count_check(argv);
-            filePos = 3;
-            break;
-        default:
-            fprintf(stderr, "invalid argument!\n");
-            return -1;
-            break;
+    case 1:
+        break;
+    case 2:
+        filePos = 1;
+        break;
+    case 3:
+        line_count_check(argv);
+        break;
+    case 4:
+        line_count_check(argv);
+        filePos = 3;
+        break;
+    default:
+        fprintf(stderr, "invalid argument!\n");
+        return -1;
+        break;
     }
 
     char *line_buffer[lineC];
@@ -143,7 +146,7 @@ int main(int argc, char* argv[])
         line_buffer[i] = calloc(LINE_LIMIT, sizeof(char));
         if (line_buffer[i] == NULL)
         {
-            for ( ; i > 0; i--)
+            for (; i > 0; i--)
             {
                 free(line_buffer[i - 1]);
             }
@@ -154,12 +157,12 @@ int main(int argc, char* argv[])
 
     lineRead(argv[filePos], line_buffer, filePos);
 
-    for(unsigned int i = lineC; i > 0; i--)
+    for (unsigned int i = lineC; i > 0; i--)
     {
-        printf("%s\n", line_buffer[i-1]);
+        printf("%s\n", line_buffer[i - 1]);
     }
 
-    for(unsigned int i = 0; i < lineC; i++)
+    for (unsigned int i = 0; i < lineC; i++)
     {
         free(line_buffer[i]);
     }
