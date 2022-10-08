@@ -48,7 +48,7 @@
 
 #include "c201.h"
 
-#include <stdio.h> // printf
+#include <stdio.h>	// printf
 #include <stdlib.h> // malloc, free
 
 int error_flag;
@@ -58,7 +58,8 @@ int solved;
  * Vytiskne upozornění na to, že došlo k chybě. Nastaví error_flag na logickou 1.
  * Tato funkce bude volána z některých dále implementovaných operací.
  */
-void List_Error() {
+void List_Error()
+{
 	printf("*ERROR* The program has performed an illegal operation.\n");
 	error_flag = TRUE;
 }
@@ -72,7 +73,8 @@ void List_Error() {
  *
  * @param list Ukazatel na strukturu jednosměrně vázaného seznamu
  */
-void List_Init( List *list ) {
+void List_Init(List *list)
+{
 	list->firstElement = NULL;
 	list->activeElement = NULL;
 }
@@ -84,10 +86,12 @@ void List_Init( List *list ) {
  *
  * @param list Ukazatel na inicializovanou strukturu jednosměrně vázaného seznamu
  **/
-void List_Dispose( List *list ) {
+void List_Dispose(List *list)
+{
 	ListElementPtr next = list->firstElement;
 	ListElementPtr current;
-	while (next != NULL) {
+	while (next != NULL)
+	{
 		current = next;
 		next = next->nextElement;
 		free(current);
@@ -104,14 +108,17 @@ void List_Dispose( List *list ) {
  * @param list Ukazatel na inicializovanou strukturu jednosměrně vázaného seznamu
  * @param data Hodnota k vložení na začátek seznamu
  */
-void List_InsertFirst( List *list, int data ) {
+void List_InsertFirst(List *list, int data)
+{
 	ListElementPtr tmp = list->firstElement;
 	list->firstElement = malloc(sizeof(struct ListElement));
-	if (list->firstElement == NULL) {
+	if (list->firstElement == NULL)
+	{
 		list->firstElement = tmp;
 		List_Error();
 	}
-	else {
+	else
+	{
 		list->firstElement->data = data;
 		list->firstElement->nextElement = tmp;
 	}
@@ -123,7 +130,8 @@ void List_InsertFirst( List *list, int data ) {
  * zda je seznam list prázdný.
  * @param list Ukazatel na inicializovanou strukturu jednosměrně vázaného seznamu
  */
-void List_First( List *list ) {
+void List_First(List *list)
+{
 	list->activeElement = list->firstElement;
 }
 
@@ -134,11 +142,14 @@ void List_First( List *list ) {
  * @param list Ukazatel na inicializovanou strukturu jednosměrně vázaného seznamu
  * @param dataPtr Ukazatel na cílovou proměnnou
  */
-void List_GetFirst( List *list, int *dataPtr ) {
-	if(list->firstElement == NULL) {
+void List_GetFirst(List *list, int *dataPtr)
+{
+	if (list->firstElement == NULL)
+	{
 		List_Error();
 	}
-	else {
+	else
+	{
 		*dataPtr = list->firstElement->data;
 	}
 }
@@ -150,7 +161,8 @@ void List_GetFirst( List *list, int *dataPtr ) {
  *
  * @param list Ukazatel na inicializovanou strukturu jednosměrně vázaného seznamu
  */
-void List_DeleteFirst( List *list ) {
+void List_DeleteFirst(List *list)
+{
 	if (list->firstElement == NULL)
 		return;
 	if (list->activeElement == list->firstElement)
@@ -168,7 +180,8 @@ void List_DeleteFirst( List *list ) {
  *
  * @param list Ukazatel na inicializovanou strukturu jednosměrně vázaného seznamu
  */
-void List_DeleteAfter( List *list ) {
+void List_DeleteAfter(List *list)
+{
 	if (list->activeElement == NULL || list->activeElement->nextElement == NULL)
 		return;
 	ListElementPtr tmp = list->activeElement->nextElement->nextElement;
@@ -185,18 +198,21 @@ void List_DeleteAfter( List *list ) {
  * @param list Ukazatel na inicializovanou strukturu jednosměrně vázaného seznamu
  * @param data Hodnota k vložení do seznamu za právě aktivní prvek
  */
-void List_InsertAfter( List *list, int data ) {
+void List_InsertAfter(List *list, int data)
+{
 	if (list->activeElement == NULL)
 		return;
 	ListElementPtr tmp = list->activeElement->nextElement;
 	list->activeElement->nextElement = malloc(sizeof(struct ListElement));
-	if (list->activeElement->nextElement == NULL) {
+	if (list->activeElement->nextElement == NULL)
+	{
 		list->activeElement->nextElement = tmp;
 		List_Error();
 	}
-	else {
+	else
+	{
 		list->activeElement->nextElement->data = data;
-		list->activeElement->nextElement->nextElement = tmp;	
+		list->activeElement->nextElement->nextElement = tmp;
 	}
 }
 
@@ -207,11 +223,14 @@ void List_InsertAfter( List *list, int data ) {
  * @param list Ukazatel na inicializovanou strukturu jednosměrně vázaného seznamu
  * @param dataPtr Ukazatel na cílovou proměnnou
  */
-void List_GetValue( List *list, int *dataPtr ) {
-	if (list->activeElement == NULL) {
+void List_GetValue(List *list, int *dataPtr)
+{
+	if (list->activeElement == NULL)
+	{
 		List_Error();
 	}
-	else {
+	else
+	{
 		*dataPtr = list->activeElement->data;
 	}
 }
@@ -223,8 +242,10 @@ void List_GetValue( List *list, int *dataPtr ) {
  * @param list Ukazatel na inicializovanou strukturu jednosměrně vázaného seznamu
  * @param data Nová hodnota právě aktivního prvku
  */
-void List_SetValue( List *list, int data ) {
-	if (list->activeElement != NULL) {
+void List_SetValue(List *list, int data)
+{
+	if (list->activeElement != NULL)
+	{
 		list->activeElement->data = data;
 	}
 }
@@ -236,8 +257,10 @@ void List_SetValue( List *list, int data ) {
  *
  * @param list Ukazatel na inicializovanou strukturu jednosměrně vázaného seznamu
  */
-void List_Next( List *list ) {
-	if (list->activeElement != NULL) {
+void List_Next(List *list)
+{
+	if (list->activeElement != NULL)
+	{
 		list->activeElement = list->activeElement->nextElement;
 	}
 }
@@ -248,7 +271,8 @@ void List_Next( List *list ) {
  *
  * @param list Ukazatel na inicializovanou strukturu jednosměrně vázaného seznamu
  */
-int List_IsActive( List *list ) {
+int List_IsActive(List *list)
+{
 	return list->activeElement == NULL ? 0 : 1;
 }
 
