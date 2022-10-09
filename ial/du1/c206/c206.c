@@ -131,10 +131,10 @@ void DLL_InsertFirst(DLList *list, int data)
 		list->firstElement->data = data;
 		list->firstElement->nextElement = tmp;
 		list->firstElement->previousElement = NULL;
-		// 
-		if (tmp != NULL) // nevkladam 1. element
+
+		if (tmp != NULL) // nevkladam 1. prvek
 			list->firstElement->nextElement->previousElement = list->firstElement;
-		else //vkladam 1. el.
+		else // vkladam 1. prvek
 			list->lastElement = list->firstElement;
 	}
 }
@@ -152,7 +152,7 @@ void DLL_InsertLast(DLList *list, int data)
 	DLLElementPtr tmp = list->firstElement;
 	if (list->firstElement == NULL) // prazdny list
 	{
-		// zbytek stejny jako: DLL_InsertFirst(list, data)
+		// zbytek vetve stejny jako: DLL_InsertFirst(list, data)
 		list->firstElement = malloc(sizeof(struct DLLElement));
 		if (list->firstElement == NULL)
 			DLL_Error();
@@ -161,7 +161,7 @@ void DLL_InsertLast(DLList *list, int data)
 			list->firstElement->data = data;
 			list->firstElement->nextElement = tmp;
 			list->firstElement->previousElement = NULL;
-			if (tmp != NULL) // nutne pro vkladani prvniho prvku
+			if (tmp != NULL)
 				list->firstElement->nextElement->previousElement = list->firstElement;
 			else
 				list->lastElement = list->firstElement;
@@ -253,12 +253,14 @@ void DLL_DeleteFirst(DLList *list)
 		return;
 	if (list->firstElement == list->activeElement)
 		list->activeElement = NULL;
+
 	DLLElementPtr tmp = list->firstElement->nextElement;
 	free(list->firstElement);
 	list->firstElement = tmp;
+
 	if (tmp != NULL)
 		list->firstElement->previousElement = NULL;
-	else
+	else // v listu byl pouze 1 prvek
 		list->lastElement = NULL;
 }
 
@@ -302,11 +304,14 @@ void DLL_DeleteAfter(DLList *list)
 		return;
 	if (list->activeElement->nextElement == list->lastElement)
 		list->lastElement = list->activeElement;
+
 	DLLElementPtr tmp = list->activeElement->nextElement->nextElement;
 	free(list->activeElement->nextElement);
 	list->activeElement->nextElement = tmp;
 	if (tmp != NULL)
 		list->activeElement->nextElement->previousElement = list->activeElement;
+	else // odstraneny prvek byl posledni
+		list->lastElement = list->activeElement;
 }
 
 /**
@@ -322,11 +327,14 @@ void DLL_DeleteBefore(DLList *list)
 		return;
 	if (list->activeElement->previousElement == list->firstElement)
 		list->firstElement = list->activeElement;
+
 	DLLElementPtr tmp = list->activeElement->previousElement->previousElement;
 	free(list->activeElement->previousElement);
 	list->activeElement->previousElement = tmp;
 	if (tmp != NULL)
 		list->activeElement->previousElement->nextElement = list->activeElement;
+	else // odstraneny prvek byl 1.
+		list->firstElement = list->activeElement;
 }
 
 /**
