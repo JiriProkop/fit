@@ -145,13 +145,9 @@ void List_First(List *list)
 void List_GetFirst(List *list, int *dataPtr)
 {
 	if (list->firstElement == NULL)
-	{
 		List_Error();
-	}
 	else
-	{
 		*dataPtr = list->firstElement->data;
-	}
 }
 
 /**
@@ -226,13 +222,9 @@ void List_InsertAfter(List *list, int data)
 void List_GetValue(List *list, int *dataPtr)
 {
 	if (list->activeElement == NULL)
-	{
 		List_Error();
-	}
 	else
-	{
 		*dataPtr = list->activeElement->data;
-	}
 }
 
 /**
@@ -245,9 +237,7 @@ void List_GetValue(List *list, int *dataPtr)
 void List_SetValue(List *list, int data)
 {
 	if (list->activeElement != NULL)
-	{
 		list->activeElement->data = data;
-	}
 }
 
 /**
@@ -260,9 +250,7 @@ void List_SetValue(List *list, int data)
 void List_Next(List *list)
 {
 	if (list->activeElement != NULL)
-	{
 		list->activeElement = list->activeElement->nextElement;
-	}
 }
 
 /**
