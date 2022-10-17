@@ -69,7 +69,6 @@ struct arena
 #endif // NDEBUG
 
 #define MIN_ASIZE (8)
-#define ARENA_SIZE (128 * 1024)
 
 Arena *first_arena = NULL;
 
@@ -78,7 +77,10 @@ Arena *first_arena = NULL;
  */
 static size_t allign_page(size_t size)
 {
-    return ((size + PAGE_SIZE - 1) / PAGE_SIZE) * PAGE_SIZE;
+    if (size % PAGE_SIZE == 0)
+            return size + PAGE_SIZE;
+    else
+        return ((size + PAGE_SIZE - 1) / PAGE_SIZE) * PAGE_SIZE;
 }
 
 /**
@@ -109,11 +111,25 @@ static Arena *arena_alloc(size_t req_size)
 }
 
 /**
+ * Checks if a given pointer is in a given arena
+ * @param ptr pointer to a Header struct
+ * @param arena pointer to a Arena struct
+ * @return true if ptr is within given arena
+*/
+static bool is_in_arena(Header* ptr, Arena* arena)
+{
+    if (((char *)ptr) >= ((char *)arena) && ((char *)ptr) < ((char *)arena) + arena->size)
+        return true;
+    return false;
+}
+
+/**
  * Appends a new arena to the end of the arena list.
  * @param a     already allocated arena
  */
 static void arena_append(Arena *a)
 {
+    // apends arena
     if (first_arena == NULL)
     {
         first_arena = a;
@@ -125,6 +141,14 @@ static void arena_append(Arena *a)
         tmp = tmp->next;
     }
     tmp->next = a;
+    // apends Header
+    Header *last = (Header *)(tmp + 1);
+    while(last->next != (Header *)(first_arena + 1))
+    {
+        last = last->next;
+    }
+    ((Header *)(a + 1))->next = last->next;
+    last->next = (Header *)(a + 1);
 }
 
 /**
@@ -229,8 +253,7 @@ static bool hdr_can_merge(Header *left, Header *right)
  */
 static void hdr_merge(Header *left, Header *right)
 {
-    left->asize += right->size;
-    left->size = left->asize + sizeof(Header);
+    left->size += right->size;
     left->next = right->next;
 }
 
@@ -280,7 +303,7 @@ static Header *hdr_get_prev(Header *hdr)
     Header *tmp = (Header *)(first_arena + 1);
     if (tmp == hdr)
         return NULL;
-    while (tmp->next != NULL)
+    while (tmp->next != (Header *)(first_arena + 1))
     {
         if (tmp->next == hdr)
             return tmp;
@@ -302,13 +325,15 @@ void *mmalloc(size_t size)
     Header *elem = best_fit(size);
     if (elem == NULL)
     {
-        Arena *tmp = arena_alloc(ARENA_SIZE);
+        size_t ar_size = allign_page(size);
+        
+        Arena *tmp = arena_alloc(ar_size);
         if (tmp == NULL)
             return NULL;
 
         arena_append(tmp);
         tmp = tmp + 1;
-        hdr_ctor((Header *)tmp, ARENA_SIZE - sizeof(Arena));
+        hdr_ctor((Header *)tmp, ar_size - sizeof(Arena));
         hdr_split((Header *)tmp, size);
         return (void *) ((Header *)tmp + 1);
     }
@@ -335,8 +360,30 @@ void *mmalloc(size_t size)
  */
 void mfree(void *ptr)
 {
-    (void)ptr;
-    // FIXME
+    //FIXME next header merge
+    //FIXME prev header merge
+    if (ptr == NULL)
+        return;
+    Arena *a = first_arena;
+    while(!is_in_arena(ptr, a))
+    {
+        a = a->next;
+    }
+
+    ptr = ((Header *)ptr)- 1;
+    ((Header *)ptr)->asize = 0;
+
+    Header *tmp = (Header *)ptr;
+    if (tmp != NULL && hdr_can_merge(tmp, tmp->next) && is_in_arena(tmp->next, a))
+    {
+        hdr_merge(tmp, tmp->next);
+    }
+
+    tmp = hdr_get_prev((Header *)ptr);
+    if (tmp != NULL && hdr_can_merge(tmp, (Header*)ptr) && is_in_arena(tmp, a))
+    {
+        hdr_merge(tmp, (Header *)ptr);
+    }
 }
 
 /**
@@ -349,8 +396,6 @@ void mfree(void *ptr)
  */
 void *mrealloc(void *ptr, size_t size)
 {
-    // FIXME
-    (void)ptr;
-    (void)size;
-    return NULL;
+    mfree(ptr);
+    return mmalloc(size);
 }
