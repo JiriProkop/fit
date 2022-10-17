@@ -144,7 +144,10 @@ static void hdr_ctor(Header *hdr, size_t size)
 {
     hdr->asize = size - sizeof(Header);
     hdr->size = size;
-    hdr->next = NULL;
+    if (first_arena == NULL)
+        hdr->next = hdr;
+    else
+        hdr->next = (Header *)(first_arena + 1);
 }
 
 /**
@@ -188,15 +191,17 @@ static bool hdr_should_split(Header *hdr, size_t size)
  */
 static Header *hdr_split(Header *hdr, size_t req_size)
 {
-    hdr->asize -= sizeof(Header) + req_size; // FIXME req_size ma byt vlevo, ne vpravo
-    hdr->size = sizeof(Header) + hdr->asize;
+    hdr->asize = req_size;
     char *tmp = (char *)hdr;
-    tmp += hdr->size;
+    tmp += hdr->asize + sizeof(Header);
+    
     ((Header *)tmp)->next = hdr->next;
-    ((Header *)tmp)->asize = req_size;
-    ((Header *)tmp)->size = sizeof(Header) + req_size;
-    hdr->next = ((Header *)tmp);
-    return ((Header *)tmp);
+    ((Header *)tmp)->size = hdr->size - sizeof(Header) - hdr->asize;
+    ((Header *)tmp)->asize = 0;
+
+    hdr->next = (Header *)tmp;
+    hdr->size = hdr->asize + sizeof(Header);
+    return (Header *)tmp;
 }
 
 /**
@@ -237,15 +242,20 @@ static void hdr_merge(Header *left, Header *right)
  */
 static Header *best_fit(size_t size)
 {
-    Header *tmp = (Header *)first_arena;
+    if (first_arena == NULL)
+        return NULL;
+
+    Header *tmp = (Header *)(first_arena + 1);
     size_t *best = NULL;
-    while (tmp != NULL)
+    bool flag = true;
+    while (tmp != ((Header *)(first_arena + 1)) || flag)
     {
-        if (tmp->asize >= size && (tmp->asize < *best || best == NULL))
+        if (tmp->size - sizeof(Header) >= size && tmp->asize == 0 && (best == NULL || tmp->asize < *best))
         {
-            *best = tmp->asize;
+            best = &tmp->asize;
         }
         tmp = tmp->next;
+        flag = false;
     }
     if (best == NULL)
         return NULL;
@@ -267,7 +277,7 @@ static Header *hdr_get_prev(Header *hdr)
 
     if (first_arena == NULL)
         return NULL;
-    Header *tmp = (Header *)first_arena;
+    Header *tmp = (Header *)(first_arena + 1);
     if (tmp == hdr)
         return NULL;
     while (tmp->next != NULL)
@@ -300,20 +310,20 @@ void *mmalloc(size_t size)
         tmp = tmp + 1;
         hdr_ctor((Header *)tmp, ARENA_SIZE - sizeof(Arena));
         hdr_split((Header *)tmp, size);
-        return (void *)tmp;
+        return (void *) ((Header *)tmp + 1);
     }
     else
     {
         if (hdr_should_split(elem, size))
         {
             hdr_split(elem, size);
-            return (void *)elem;
+            return (void *)(elem + 1);
         }
         else
         {
             elem->asize = size;
             elem->size = size + sizeof(Header);
-            return (void *)elem;
+            return (void *)(elem + 1);
         }
     }
 }
