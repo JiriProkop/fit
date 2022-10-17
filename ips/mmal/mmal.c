@@ -114,6 +114,8 @@ static Arena *arena_alloc(size_t req_size)
  * Checks if a given pointer is in a given arena
  * @param ptr pointer to a Header struct
  * @param arena pointer to a Arena struct
+ * @pre ptr != NULL
+ * @pre arena != NULL
  * @return true if ptr is within given arena
 */
 static bool is_in_arena(Header* ptr, Arena* arena)
@@ -360,8 +362,6 @@ void *mmalloc(size_t size)
  */
 void mfree(void *ptr)
 {
-    //FIXME next header merge
-    //FIXME prev header merge
     if (ptr == NULL)
         return;
     Arena *a = first_arena;
