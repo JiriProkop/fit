@@ -20,6 +20,7 @@
  * možné toto detegovať vo funkcii.
  */
 void bst_init(bst_node_t **tree) {
+    (*tree) = NULL;
 }
 
 /*
@@ -32,7 +33,22 @@ void bst_init(bst_node_t **tree) {
  * Funkciu implementujte iteratívne bez použitia vlastných pomocných funkcií.
  */
 bool bst_search(bst_node_t *tree, char key, int *value) {
-  return false;
+    if (tree == NULL) {
+        return false;
+    }
+    while (tree != NULL) {
+        if (key < tree->key) {
+            tree = tree->left;
+        }
+
+        else if (key == tree->key) {
+            *value = tree->value;
+            return true;
+        } else {
+            tree = tree->right;
+        }
+    }
+    return false;
 }
 
 /*
@@ -47,6 +63,55 @@ bool bst_search(bst_node_t *tree, char key, int *value) {
  * Funkciu implementujte iteratívne bez použitia vlastných pomocných funkcií.
  */
 void bst_insert(bst_node_t **tree, char key, int value) {
+    if (*tree == NULL) {
+        *tree = malloc(sizeof(bst_node_t));
+        if (*tree == NULL) {
+            fprintf(stderr, "Chyba alokace pameti! '\n'");
+            return;
+        }
+        (*tree)->key = key;
+        (*tree)->value = value;
+        (*tree)->left = NULL;
+        (*tree)->right = NULL;
+        return;
+    }
+    bst_node_t *tmp = *tree;
+    while (1) {
+        if (key < tmp->key) {
+            if (tmp->left != NULL) {
+                tmp = tmp->left;
+            } else {
+                tmp->left = malloc(sizeof(bst_node_t));
+                if (tmp->left == NULL) {
+                    fprintf(stderr, "Chyba alokace pameti! '\n'");
+                    return;
+                }
+                tmp->left->key = key;
+                tmp->left->value = value;
+                tmp->left->left = NULL;
+                tmp->left->right = NULL;
+                return;
+            }
+        } else if (key == tmp->key) {
+            tmp->value = value;
+            return;
+        } else {
+            if (tmp->right != NULL) {
+                tmp = tmp->right;
+            } else {
+                tmp->right = malloc(sizeof(bst_node_t));
+                if (tmp->right == NULL) {
+                    fprintf(stderr, "Chyba alokace pameti! '\n'");
+                    return;
+                }
+                tmp->right->key = key;
+                tmp->right->value = value;
+                tmp->right->left = NULL;
+                tmp->right->right = NULL;
+                return;
+            }
+        }
+    }
 }
 
 /*
