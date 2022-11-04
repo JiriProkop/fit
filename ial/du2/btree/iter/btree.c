@@ -128,6 +128,34 @@ void bst_insert(bst_node_t **tree, char key, int value) {
  * Funkciu implementujte iteratívne bez použitia vlastných pomocných funkcií.
  */
 void bst_replace_by_rightmost(bst_node_t *target, bst_node_t **tree) {
+    if (*tree == NULL) {
+        return;
+    }
+    bst_node_t *tmp = *tree;
+    if ((*tree)->right == NULL) {
+        target->key = (*tree)->key;
+        target->value = (*tree)->value;
+        if ((*tree)->left == NULL) {
+            free((*tree)); // Nastavit na NULL v bst_delete
+        } else {
+            tmp = (*tree)->left;
+            free(*tree);
+            *tree = tmp;
+        }
+    }
+    while (tmp->right->right != NULL) {
+        tmp = tmp->right;
+    }
+    target->key = tmp->right->key;
+    target->value = tmp->right->value;
+    if (tmp->right->left != NULL) {
+        bst_node_t *ptr = tmp->right->left;
+        free(tmp->right);
+        tmp->right = ptr;
+    } else {
+        free(tmp->right);
+        tmp->right = NULL;
+    }
 }
 
 /*
@@ -143,6 +171,68 @@ void bst_replace_by_rightmost(bst_node_t *target, bst_node_t **tree) {
  * použitia vlastných pomocných funkcií.
  */
 void bst_delete(bst_node_t **tree, char key) {
+    if (*tree == NULL) {
+        return;
+    }
+    bst_node_t *tmp = *tree;
+    while (1) {
+        if (key < tmp->key) {
+            if (tmp->left != NULL) {
+                if (tmp->left->left == NULL && tmp->left->right == NULL) {
+                    if (tmp->left->key == key) {
+                        free(tmp->left);
+                        tmp->left = NULL;
+                    }
+                    return;
+                } else {
+                    tmp = tmp->left;
+                }
+            } else {
+                return;
+            }
+        } else if (key == tmp->key) {
+            if (tmp->left == NULL && tmp->right == NULL) {
+                free(tmp);
+                *tree = NULL; // podminka splena jenom kdyz je root ve stroum sam
+            } else if (tmp->left == NULL) {
+                tmp->key = tmp->right->key;
+                tmp->left = tmp->right->left;
+                tmp->value = tmp->right->value;
+                bst_node_t *ptr = tmp->right;
+                tmp->right = tmp->right->right;
+                free(ptr);
+            } else if (tmp->right == NULL) {
+                tmp->key = tmp->left->key;
+                tmp->right = tmp->left->right;
+                tmp->value = tmp->left->value;
+				bst_node_t *ptr = tmp->left;
+                tmp->left = tmp->left->left;
+                free(ptr);
+            } else {
+                if (tmp->left->left == NULL && tmp->left->right == NULL) {
+                    bst_replace_by_rightmost(tmp, &(tmp->left));
+                    tmp->left = NULL;
+                } else {
+                    bst_replace_by_rightmost(tmp, &(tmp->left));
+                }
+            }
+            return;
+        } else {
+			if (tmp->right != NULL) {
+                if (tmp->right->left == NULL && tmp->right->right == NULL) {
+                    if (tmp->right->key == key) {
+                        free(tmp->right);
+                        tmp->right = NULL;
+                    }
+                    return;
+                } else {
+                    tmp = tmp->right;
+                }
+            } else {
+                return;
+            }
+		}
+    }
 }
 
 /*
