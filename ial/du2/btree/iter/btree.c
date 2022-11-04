@@ -205,7 +205,7 @@ void bst_delete(bst_node_t **tree, char key) {
                 tmp->key = tmp->left->key;
                 tmp->right = tmp->left->right;
                 tmp->value = tmp->left->value;
-				bst_node_t *ptr = tmp->left;
+                bst_node_t *ptr = tmp->left;
                 tmp->left = tmp->left->left;
                 free(ptr);
             } else {
@@ -218,7 +218,7 @@ void bst_delete(bst_node_t **tree, char key) {
             }
             return;
         } else {
-			if (tmp->right != NULL) {
+            if (tmp->right != NULL) {
                 if (tmp->right->left == NULL && tmp->right->right == NULL) {
                     if (tmp->right->key == key) {
                         free(tmp->right);
@@ -231,7 +231,7 @@ void bst_delete(bst_node_t **tree, char key) {
             } else {
                 return;
             }
-		}
+        }
     }
 }
 
@@ -246,6 +246,42 @@ void bst_delete(bst_node_t **tree, char key) {
  * vlastných pomocných funkcií.
  */
 void bst_dispose(bst_node_t **tree) {
+    while (*tree != NULL) {
+        bst_node_t *tmp = *tree;
+        while (1) {
+            if (tmp->right != NULL) {
+                if (tmp->right->right != NULL) {
+                    tmp = tmp->right;
+                } else {
+                    if (tmp->right->left == NULL) {
+                        free(tmp->right);
+                        tmp->right = NULL;
+                        break;
+                    } else {
+                        tmp = tmp->right;
+                    }
+                }
+            }
+            if (tmp->left != NULL) {
+                if (tmp->left->left != NULL) {
+                    tmp = tmp->left;
+                } else {
+                    if (tmp->left->right == NULL) {
+                        free(tmp->left);
+                        tmp->left = NULL;
+                        break;
+                    } else {
+                        tmp = tmp->left;
+                    }
+                }
+            }
+            if (tmp->left == NULL && tmp->right == NULL) {
+                free(tmp); // melo by se stat jenom na konci u uvolneni korene
+                *tree = NULL;
+                break;
+            }
+        }
+    }
 }
 
 /*
@@ -258,6 +294,11 @@ void bst_dispose(bst_node_t **tree) {
  * vlastných pomocných funkcií.
  */
 void bst_leftmost_preorder(bst_node_t *tree, stack_bst_t *to_visit) {
+    while (tree != NULL) {
+        stack_bst_push(to_visit, tree);
+        bst_print_node(tree);
+        tree = tree->left;
+    }
 }
 
 /*
@@ -269,6 +310,15 @@ void bst_leftmost_preorder(bst_node_t *tree, stack_bst_t *to_visit) {
  * zásobníku uzlov bez použitia vlastných pomocných funkcií.
  */
 void bst_preorder(bst_node_t *tree) {
+    stack_bst_t stack;
+    stack_bst_init(&stack);
+    bst_leftmost_preorder(tree, &stack);
+
+    while (!stack_bst_empty(&stack)) {
+        tree = stack_bst_top(&stack);
+        stack_bst_pop(&stack);
+        bst_leftmost_preorder(tree->right, &stack);
+    }
 }
 
 /*
@@ -281,6 +331,10 @@ void bst_preorder(bst_node_t *tree) {
  * vlastných pomocných funkcií.
  */
 void bst_leftmost_inorder(bst_node_t *tree, stack_bst_t *to_visit) {
+    while (tree != NULL) {
+        stack_bst_push(to_visit, tree);
+        tree = tree->left;
+    }
 }
 
 /*
@@ -292,6 +346,16 @@ void bst_leftmost_inorder(bst_node_t *tree, stack_bst_t *to_visit) {
  * zásobníku uzlov bez použitia vlastných pomocných funkcií.
  */
 void bst_inorder(bst_node_t *tree) {
+    stack_bst_t stack;
+    stack_bst_init(&stack);
+    bst_leftmost_inorder(tree, &stack);
+
+    while (!stack_bst_empty(&stack)) {
+        tree = stack_bst_top(&stack);
+        stack_bst_pop(&stack);
+        bst_print_node(tree);
+        bst_leftmost_inorder(tree->right, &stack);
+    }
 }
 
 /*
@@ -306,6 +370,11 @@ void bst_inorder(bst_node_t *tree) {
  */
 void bst_leftmost_postorder(bst_node_t *tree, stack_bst_t *to_visit,
                             stack_bool_t *first_visit) {
+    while (tree != NULL) {
+        stack_bst_push(to_visit, tree);
+        stack_bool_push(first_visit, true);
+        tree = tree->left;
+    }
 }
 
 /*
@@ -317,4 +386,23 @@ void bst_leftmost_postorder(bst_node_t *tree, stack_bst_t *to_visit,
  * zásobníkov uzlov a bool hodnôt bez použitia vlastných pomocných funkcií.
  */
 void bst_postorder(bst_node_t *tree) {
+    bool froml;
+    stack_bool_t bool_stack;
+    stack_bool_init(&bool_stack);
+    stack_bst_t node_stack;
+    stack_bst_init(&node_stack);
+
+    bst_leftmost_postorder(tree, &node_stack, &bool_stack);
+    while (!stack_bst_empty(&node_stack)) {
+        tree = stack_bst_top(&node_stack);
+        froml = stack_bool_top(&bool_stack);
+        stack_bool_pop(&bool_stack);
+        if (froml) {
+            stack_bool_push(&bool_stack, false);
+            bst_leftmost_postorder(tree->right, &node_stack, &bool_stack);
+        } else {
+            stack_bst_pop(&node_stack);
+            bst_print_node(tree);
+        }
+    }
 }
