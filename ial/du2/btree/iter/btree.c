@@ -142,6 +142,7 @@ void bst_replace_by_rightmost(bst_node_t *target, bst_node_t **tree) {
             free(*tree);
             *tree = tmp;
         }
+        return;
     }
     while (tmp->right->right != NULL) {
         tmp = tmp->right;
