@@ -34,15 +34,35 @@ entity cpu is
    OUT_BUSY : in std_logic;                       -- LCD je zaneprazdnen (1), nelze zapisovat
    OUT_WE   : out std_logic                       -- LCD <- OUT_DATA pokud OUT_WE='1' a OUT_BUSY='0'
    );
-   end cpu;
+end cpu;
    
    
    -- ----------------------------------------------------------------------------
    --                      Architecture declaration
    -- ----------------------------------------------------------------------------
-   architecture behavioral of cpu is
+architecture behavioral of cpu is
 
-	type fsm_state is (sidle, sstart, swhatever);
+	type fsm_state is (
+		s_idle, 
+		s_fetch, 
+		s_prefetch, 
+		s_decode, 
+
+		s_ptr_inc, 
+		s_ptr_dec, 
+
+		s_val_inc0, 
+		s_val_inc1, 
+		s_val_inc2,
+
+		s_val_dec0,
+		s_val_dec1,
+		s_val_dec2,
+
+		s_print0,
+		s_print1,
+		s_print2,
+		s_null);
 
 	signal pstate : fsm_state;
 	signal nstate : fsm_state;
@@ -54,31 +74,31 @@ entity cpu is
 	--
 
 	-- PTR
-	signal ptr_reg : std_logic_vector (9 downto 0);
+	signal ptr_reg : std_logic_vector (11 downto 0);
 	signal ptr_inc : std_logic;
 	signal ptr_dec : std_logic;
 	--
 
-	-- MUX
-	signal mux_sel : std_logic_vector (1 downto 0);
+	-- MUX1
+	signal mux1_sel : std_logic;
+	signal mux2_sel : std_logic_vector (1 downto 0);
 	--
 
 	-- PC
-	signal pc_reg : std_logic_vector(15 downto 0);
-	signal pc_set : std_logic_vector(15 downto 0);
-	signal pc_ld : std_logic;
+	signal pc_reg : std_logic_vector(11 downto 0);
+	signal pc_dec : std_logic;
 	signal pc_inc : std_logic;
 	-------------------------------------------------------------------------------
 begin
   -- PC
   program_counter: process (RESET, CLK)
   begin
-    if (RESET='1') then
-      pc_reg <= (others=>'0');
+    if (RESET = '1') then
+      pc_reg <= (others => '0');
     elsif rising_edge(CLK) then
-      if (pc_ld='1') then
-        pc_reg <= pc_set;
-      elsif (pc_inc='1') then
+      if (pc_dec = '1') then
+        pc_reg <= pc_reg - 1;
+      elsif (pc_inc = '1') then
         pc_reg <= pc_reg + 1;
       end if;
     end if;
@@ -89,7 +109,7 @@ begin
 	pointer: process (RESET, CLK)
 	begin
 		if (RESET = '1') then
-			ptr_reg <= (others => '0');
+			ptr_reg <= "000000000000";
 		elsif (rising_edge(CLK)) then
 			if (ptr_inc = '1') then
 				ptr_reg <= ptr_reg + 1;
@@ -98,47 +118,59 @@ begin
 			end if;
 		end if;
 	end process;
-	DATA_ADDR <= ptr_reg;
 	--
 
-	-- CNT
-	counter: process (RESET, CLK)
+	-- -- CNT
+	-- counter: process (RESET, CLK)
+	-- begin
+	-- 	if (RESET = '1') then
+	-- 		cnt_reg <= (others => '0');
+	-- 	elsif (rising_edge(CLK)) then
+	-- 		if (cnt_inc = '1') then
+	-- 			cnt_reg <= cnt_reg + 1;
+	-- 		elsif (cnt_dec = '1') then
+	-- 			cnt_reg <= cnt_reg - 1;
+	-- 		end if;
+	-- 	end if;
+	-- end process;
+	-- --
+
+	-- MUX1
+	mux1: process (RESET, CLK)
 	begin
-		if (RESET = '1') then
-			cnt_reg <= (others => '0');
-		elsif (rising_edge(CLK)) then
-			if (cnt_inc = '1') then
-				cnt_reg <= cnt_reg + 1;
-			elsif (cnt_dec = '1') then
-				cnt_reg <= cnt_reg - 1;
+		if (rising_edge(CLK)) then
+			if (mux1_sel = '0') then --nacitam kod
+				DATA_ADDR <= '0' & pc_reg;
+			elsif (mux1_sel = '1') then --nacitam data
+				DATA_ADDR <= '1' & ptr_reg;
 			end if;
 		end if;
 	end process;
 	--
 
-	-- MUX
-	mux: process (RESET, CLK)
+	-- MUX2
+	mux2: process (RESET, CLK)
 	begin
 		if (RESET = '1') then
 			DATA_WDATA <= (others => '0');	
 		elsif (rising_edge(CLK)) then
-			if (mux_sel = "00") then
-				DATA_WDATA <= IN_DATA;
-			elsif (mux_sel = "01") then
+			if (mux2_sel = "00") then
+				NULL;
+			elsif (mux2_sel = "01") then
 				DATA_WDATA <= DATA_RDATA + 1;
-			elsif (mux_sel = "10") then
+			elsif (mux2_sel = "10") then
 				DATA_WDATA <= DATA_RDATA - 1;
-			else 
-				DATA_WDATA <= (others => '0');
+			elsif (mux2_sel = "11") then
+				DATA_WDATA <= IN_DATA;
 			end if;
 		end if;
 	end process;
-	--
+	
 	-- FSM state register
-	fsm_state_process: process (RESET, CLK)
+	fsm_pstate_process: process (RESET, CLK)
 	begin
 		if (RESET = '1') then
-			pstate <= sidle;
+			pstate <= s_idle;
 		elsif (rising_edge(CLK)) then
 			if (EN = '1') then
 				pstate <= nstate;
@@ -152,16 +184,106 @@ begin
   begin
 	DATA_EN <= '0';
 	DATA_RDWR <= '0';
-	IN_REQ <= '0';
+	
 	OUT_WE <= '0';
 
-	pc_inc <= '0';
-	pc_ld <= '0';
-
-	cnt_inc <= '0';
-	cnt_dec <= '0';
+	-- cnt_inc <= '0';
+	-- cnt_dec <= '0';
+	IN_REQ <= '0';
 	ptr_inc <= '0';
 	ptr_dec <= '0';
+	pc_inc <= '0';
+	pc_dec <= '0';
+
+	mux1_sel <= '0';
+	mux2_sel <= "00";
+
+	case pstate is
+		when s_idle =>
+			nstate <= s_prefetch;
+		when s_prefetch =>
+			nstate <= s_fetch;
+		when s_fetch =>
+			DATA_EN <= '1';
+			nstate <= s_decode;
+		when s_decode =>
+			case DATA_RDATA is
+				when X"3E" =>
+					nstate <= s_ptr_inc;
+				when X"3C" =>
+					nstate <= s_ptr_dec;
+				when X"2B" =>
+					mux1_sel <= '1';
+					nstate <= s_val_inc0;
+				when X"2D" =>
+					mux1_sel <= '1';
+					nstate <= s_val_dec0;
+				when X"2E" =>
+					mux1_sel <= '1';
+					nstate <= s_print0;
+				when X"00" =>
+					nstate <= s_null;
+				when others =>
+					pc_inc <= '1';
+					nstate <= s_fetch;
+			end case;
+		when s_null =>
+			nstate <= s_null;
+		-- >
+		when s_ptr_inc =>
+			ptr_inc <= '1';
+			pc_inc <= '1';
+			nstate <= s_prefetch;
+		-- <
+		when s_ptr_dec =>
+			ptr_dec <= '1';
+			pc_inc <= '1';
+			nstate <= s_prefetch;
+		-- +
+		when s_val_inc0 =>
+			DATA_EN <= '1';
+			DATA_RDWR <= '0';
+			nstate <= s_val_inc1;
+		when s_val_inc1 =>
+			mux2_sel <= "01";
+			mux1_sel <= '1';
+			nstate <= s_val_inc2;
+		when s_val_inc2 =>
+			DATA_EN <= '1';
+			DATA_RDWR <= '1';
+			pc_inc <= '1';
+			nstate <= s_prefetch;
+		-- -
+		when s_val_dec0 =>
+			DATA_EN <= '1';
+			DATA_RDWR <= '0';
+			nstate <= s_val_dec1;
+		when s_val_dec1 =>
+			mux2_sel <= "10";
+			mux1_sel <= '1';
+			nstate <= s_val_dec2;
+		when s_val_dec2 =>
+			DATA_EN <= '1';
+			DATA_RDWR <= '1';
+			pc_inc <= '1';
+			nstate <= s_prefetch;
+		-- .
+		when s_print0 =>
+			DATA_EN <= '1';
+			DATA_RDWR <= '0';
+			nstate <= s_print1;
+		when s_print1 =>
+			if (OUT_BUSY = '1') then
+				nstate <= s_print1;
+			else
+				nstate <= s_print2;
+			end if;
+		when s_print2 =>
+			OUT_WE <= '1';
+			OUT_DATA <= DATA_RDATA;
+			pc_inc <= '1';
+			nstate <= s_prefetch;
+		end case;
   end process;
 
 end behavioral;
