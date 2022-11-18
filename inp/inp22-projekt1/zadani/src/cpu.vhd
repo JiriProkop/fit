@@ -68,23 +68,23 @@ architecture behavioral of cpu is
 
 		-- while loop
 		s_while0,
-		s_while00,
 		s_while1,
-		s_while10,
 		s_while2,
-		s_while_wait0,
 		s_while3,
-		s_while30,
 		s_while4,
-		s_while40,
-		s_while41,
-		s_while42,
 		s_while5,
-		s_while50,
 		s_while6,
-		s_while_wait1,
-		s_while_wait2,
-		s_while_wait3,
+		s_while7,
+		s_while8,
+		s_while9,
+		s_whileA,
+		s_whileB,
+		s_whileC,
+		s_whileD,
+		s_whileE,
+		s_whileF,
+		s_while10,
+		s_while11,
 
 		--do-while loop
 		s_dowhile0,
@@ -268,7 +268,7 @@ begin
 					nstate <= s_while0;
 				when X"5D" =>
 					mux1_sel <= '1';
-					nstate <= s_while3;
+					nstate <= s_while6;
 				when X"28" =>
 					pc_inc <= '1';
 					nstate <= s_prefetch;
@@ -357,22 +357,22 @@ begin
 		when s_while0 =>
 			DATA_EN <= '1';
 			DATA_RDWR <= '0';
-			nstate <= s_while00;
-		when s_while00 =>
-			mux1_sel <= '1';
 			nstate <= s_while1;
 		when s_while1 =>
+			mux1_sel <= '1';
+			nstate <= s_while2;
+		when s_while2 =>
 			if(DATA_RDATA = "00000000") then
 				cnt_inc <= '1';
 				DATA_EN <= '1';
 				DATA_RDWR <= '0';
-				nstate <= s_while10;
+				nstate <= s_while3;
 			else
 				nstate <= s_prefetch;
 			end if;
-		when s_while10 =>
-			nstate <= s_while2;
-		when s_while2 =>
+		when s_while3 =>
+			nstate <= s_while4;
+		when s_while4 =>
 			if(cnt_reg = "000000000000") then
 				nstate <= s_prefetch;
 			else
@@ -382,37 +382,37 @@ begin
 					cnt_dec <= '1';
 				end if;
 				pc_inc <= '1';
-				nstate <= s_while_wait0;
+				nstate <= s_while5;
 			end if;
-		when s_while_wait0 =>
+		when s_while5 =>
 			DATA_EN <= '1';
 			DATA_RDWR <= '0';
-			nstate <= s_while10;
+			nstate <= s_while3;
 		-- ]
-		when s_while3 =>
+		when s_while6 =>
 			DATA_EN <= '1';
 			DATA_RDWR <= '0';
-			nstate <= s_while30;
-		when s_while30 =>
-			nstate <= s_while4;
-		when s_while4 =>
+			nstate <= s_while7;
+		when s_while7 =>
+			nstate <= s_while8;
+		when s_while8 =>
 			if (DATA_RDATA = "00000000") then
 				pc_inc <= '1';
 				nstate <= s_prefetch;
 			else
 				cnt_inc <= '1';
 				pc_dec <= '1';
-				nstate <= s_while40;
+				nstate <= s_while9;
 			end if;
-		when s_while40 =>
-			nstate <= s_while41;
-		when s_while41 =>
+		when s_while9 =>
+			nstate <= s_whileA;
+		when s_whileA =>
 			DATA_EN <= '1';
 			DATA_RDWR <= '0';
-			nstate <= s_while42;
-		when s_while42 =>
-			nstate <= s_while5;
-		when s_while5 =>	-- while(CNT != 0)
+			nstate <= s_whileB;
+		when s_whileB =>
+			nstate <= s_whileC;
+		when s_whileC =>	-- while(CNT != 0)
 			if (cnt_reg = "000000000000") then
 				nstate <= s_prefetch;
 			else
@@ -421,25 +421,25 @@ begin
 				elsif (DATA_RDATA = X"5B") then -- if(DATA_RDATA == '[')
 					cnt_dec <= '1';
 				end if;
-				nstate <= s_while50;
+				nstate <= s_whileD;
 			end if;
-		when s_while50 =>
-			nstate <= s_while6;
-		when s_while6 =>
+		when s_whileD =>
+			nstate <= s_whileE;
+		when s_whileE =>
 			if (cnt_reg = "000000000000") then
 				pc_inc <= '1';
 			else
 				pc_dec <= '1';
 			end if;
-			nstate <= s_while_wait1;
-		when s_while_wait1 =>
-			nstate <= s_while_wait2;
-		when s_while_wait2 =>
+			nstate <= s_whileF;
+		when s_whileF =>
+			nstate <= s_while10;
+		when s_while10 =>
 			DATA_EN <= '1';
 			DATA_RDWR <= '0';
-			nstate <= s_while_wait3;
-		when s_while_wait3 =>
-			nstate <= s_while5;
+			nstate <= s_while11;
+		when s_while11 =>
+			nstate <= s_whileC;
 
 		-- )
 		when s_dowhile0 =>
