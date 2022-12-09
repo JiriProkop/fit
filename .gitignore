@@ -8,15 +8,19 @@
 ivs_project2
 ifj
 
+# Images
+*.png
+*.jpeg
+
+# Videos
+dema
+zaznamy
+prednasky
 
 #####################################
 # auto generated stuff from github (for language C) 
 # Prerequisites
 *.d
-
-# Images
-*.png
-*.jpeg
 
 # Object files
 *.o
