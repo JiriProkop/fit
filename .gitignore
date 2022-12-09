@@ -19,6 +19,12 @@ prednasky
 
 #####################################
 # auto generated stuff from github (for language C) 
+
+# a bit of my own stuff
+env
+build
+test
+
 # Prerequisites
 *.d
 
