@@ -2,4 +2,49 @@
 .vscode
 
 #Documents
-.pdf
+*.pdf
+
+# Projects which have their own repos
+ivs_project2
+ifj
+
+
+#####################################
+# auto generated stuff from github (for language C) 
+# Prerequisites
+*.d
+
+# Images
+*.png
+*.jpeg
+
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Linker output
+*.ilk
+*.map
+*.exp
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
