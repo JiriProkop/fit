@@ -19,6 +19,7 @@ prednasky
 
 inp/INP2022-projekt2/edumips64-1.2.10.jar
 *.wav
+iss/notebooks
 
 #####################################
 # auto generated stuff from github (for language C) 
