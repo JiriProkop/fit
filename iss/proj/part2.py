@@ -20,7 +20,7 @@ for i in reversed(range(MIDIFROM, MIDITO + 1)):
 	mod = mod[:mod.size // 2] # symetricke
 
 	average = np.average(mod[:500]) * 2
-	peaks = scipsig.find_peaks(mod, prominence=5, height=2 * average)
+	peaks = scipsig.find_peaks(mod, prominence=5, height=12*average)
 	biggest_peak = scipsig.find_peaks(mod, height=max(mod))
 	peaks = peaks[0]
 	index = np.where(peaks == biggest_peak[0][0])
@@ -33,27 +33,28 @@ for i in reversed(range(MIDIFROM, MIDITO + 1)):
 		frec = peaks[-1] / 2
 	
 	if i == 24:
-		plt.subplot(311)
-		plt.title(str(i) + ":    F = " + str(frec))
+		plt.subplot(611)
+		plt.title(str(i) + ":    f = " + str(frec))
 		plt.plot(mod[:700])
+		plt.xlabel('$f [Hz]$')
 		plt.plot(peaks[-1], mod[peaks[-1]], "*", color="black")
 	if i == 59:
-		plt.subplot(312)
-		plt.title(str(i) + ":    F = " + str(frec))
+		plt.subplot(613)
+		plt.title(str(i) + ":    f = " + str(frec))
 		plt.plot(mod[:2000])
+		plt.xlabel('$f [Hz]$')
 		plt.plot(peaks[-1], mod[peaks[-1]], "*", color="black")
 	if i == 89:
-		plt.subplot(313)
-		plt.title(str(i) + ":    F = " + str(frec))
+		plt.subplot(615)
+		plt.title(str(i) + ":    f = " + str(frec))
 		plt.plot(mod[:2000])
+		plt.xlabel('$f [Hz]$')
 		plt.plot(peaks[-1], mod[peaks[-1]], "*", color="black")
-	# # obecny vypocet pro vsechny tony
-	# if i < 38:
-	# 	print(str(i) + "\t" + str(peaks[0]))
-	# elif i >= 38 and i < 41:
-	# 	print(str(i) + "\t" + str(peaks[0] / 1.5))
-	# else:
-	# 	print(str(i) + "\t" + str(peaks[0] * 2))
+	# obecny vypocet pro vsechny tony
+	if i < 41:
+		print(str(i) + "\t" + str(peaks[0] / 2))
+	else:
+		print(str(i) + "\t" + str(peaks[0]))
 
 	#24, 59, 89
 		
