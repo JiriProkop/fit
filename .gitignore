@@ -3,20 +3,23 @@
 
 #Documents
 *.pdf
+gaudeamus
+FIT.ovpn
 
 # Projects which have their own repos
-ivs_project2
+ivs/ivs_project2
 ifj
+ipk
 
 # Images
 *.png
 *.jpeg
 
 # Videos
-dema
-zaznamy
-prednasky
+ial/zaznamy_Krena/
 
+inp/inp22-projekt1/env/
+inp/inp22-projekt1/zadani/test/
 inp/INP2022-projekt2/edumips64-1.2.10.jar
 *.wav
 iss/notebooks
@@ -25,9 +28,6 @@ iss/notebooks
 # auto generated stuff from github (for language C) 
 
 # a bit of my own stuff
-env
-build
-test
 ipp/projekt/tests/
 ips/du3
 
