@@ -1,0 +1,104 @@
+@InBook{Gill2012,
+	author = {Eric Gill},
+	title = {An Essay On Typography},
+	publisher = { ‎Penguin Classic},
+	address = {London},
+	year = {2013},
+	edition = {International Edition},
+	ISBN = { ‎ 978-0141393568 },
+}
+
+@InBook{Tschichold2006,
+	author = {Jan Tschichold},
+	title = {The New Typography},
+	publisher = {University of California Press},
+	address = {Berkeley},
+	year = {2006},
+	edition = {1},
+	ISBN = {978-0520250123},
+}
+
+@InBook{Sutnar1941,
+	author = {Miroslav Sutnar},
+	title = {Co dokáže reklama},
+	publisher = {Reklamní klub},
+	address = {Praha},
+	year = {1941},
+}
+
+@Article{Oksuz2008,
+	author = {Ozcan OKSÜZ and Uğur GÜDÜKBAY and A. Enis ÇETIN},
+	title = {A video-based text and equation editor for LaTeX},
+	journal = {Engineering Applications of Artificial Intelligence},
+	volume = {21},
+	number = {6},
+	pages = {952\,--\,960},
+	year = {2008},
+	ISSN = {0952-1976},
+}
+
+@InProceedings{Moholy–Nagyer1923,
+	author = {László Moholy–Nagyer},
+	title = {Staatliches Bauhaus, Weimar 1919 - 1923},
+	publisher = {Bauhausverl},
+	editor= {Lars Müller}
+	year = {1923},
+}
+
+@MastersThesis{Pražanová2012,
+	author = {Kristýna PRAŽANOVÁ},
+	title = {De Stijl a česká avantgarda 20. a 30. let 20. století},
+	school = {Univerzita Karlova, Filozofická fakulta, Ústav pro dějiny umění},
+	year = {2017},
+	type = {Diplomová práce},
+	note = {Vedoucí práce Lahoda, Vojtěch},
+}
+
+@MastersThesis{Mouckova2018,
+	author = {Kristýna MOUČKOVÁ},
+	title = {Grafické zpracování českých meziválečných avantgardních časopisů a jejich tvůrci},
+	school = {Univerzita Karlova, Fakulta sociálních věd, Katedra žurnalistiky},
+	year = {2018},
+	type = {Diplomová práce},
+	note ={Vedoucí práce Slanec, Jaroslav},
+}
+
+
+
+@Misc{WikiTypo,
+	title = {Typografie},
+	howpublished = {[online]},
+	year = {rev. 8. března 2022},
+	note = {[vid. 2022-04-16]},
+	url = {https://cs.wikipedia.org/wiki/Typografie},
+}
+
+@Misc{Kubus2018,
+	author = {Filip Kubus},
+	title = {Typografie jako umění každodenního života},
+	howpublished = {[online]},
+	year = {1. prosince 2018},
+	note = {[vid. 2022-04-16]},
+	url = {http://www.ilist.cz/clanky/typografie-jako-umeni-kazdodenniho-zivota},
+}
+
+@Misc{WikySutnar,
+	title = {Ladislav Sutnar},
+	howpublished = {[online]},
+	year = {rev. 23. března 2022},
+	note = {[vid. 2022-04-16]},
+	url = {Wikipedie, https://cs.wikipedia.org/wiki/Ladislav_Sutnar},
+}
+
+
+@Article{CazarezCastro2012,
+	author = {Nohe R. CAZAREZ-CASTRO and Luis T. AGUILAR and Oscar CASTILLO},
+	title = {Designing Type-1 and Type-2 Fuzzy Logic Controllers via Fuzzy Lyapunov Synthesis for
+		nonsmooth mechanical systems},
+	journal = {Engineering Applications of Artificial Intelligence},
+	volume = {25},
+	number = {5},
+	pages = {971\,--\,979},
+	year = {2012},
+	ISSN = {0952-1976},
+}

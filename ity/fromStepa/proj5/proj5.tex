@@ -1,0 +1,115 @@
+\documentclass[10pt,xcolor=pdflatex,hyperref={unicode}]{beamer}
+\usepackage{newcent}
+\usepackage[utf8]{inputenc}
+\usepackage[czech]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{fancyvrb}
+\usepackage{listings}
+\usetheme{FIT}
+\usepackage{graphicx}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\title[Qick sort]{Řadící algoritmy: Quick sort}
+
+\author[]{Štěpán Czajkowski}
+
+%\institute[]{Brno University of Technology, Faculty of %Information Technology\\
+%Bo\v{z}et\v{e}chova 1/2. 612 66 Brno - Kr\'alovo Pole\\
+%login@fit.vutbr.cz}
+
+\institute[]{Fakulta informačních technologií
+Vysokého učení technického v Brně\\
+Bo\v{z}et\v{e}chova 1/2. 612 66 Brno - Kr\'alovo Pole\\
+xczajk01@stud.fit.vutbr.cz}
+
+%České logo - Czech logo
+%beamerouterthemeFIT.sty řádek 9: fitlogo1_cz
+
+\date{30 duben, 2020}
+%\date{\today}
+%\date{} % bez data / without date
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+\frame[plain]{\titlepage}
+
+\begin{frame}\frametitle{Motivace}
+    \begin{itemize}
+        \item Získání bodů do předmětu ITY 
+        \item Zopakovat si Quicksort
+        \item Naučit se prezentace v \LaTeX   \end{itemize}
+    %Example \emph{content}.
+\end{frame}
+
+
+\begin{frame}\frametitle{Historie}
+    \begin{itemize}
+        \item Vytvořil Tony Hoare 
+        \item Návrh 1959 
+        \item Publikace 1961 v časopise Communications of the ACM
+    \end{itemize}
+    \begin{figure}[h]
+        \includegraphics[width=7cm, height=5cm]{Bubble_original_latex.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}\frametitle{Pivot}
+    \begin{itemize}
+        \item Prvek se kterým se porovnává zbytek pole
+        \item Ideálně medián hodnot
+        \item Různe metody náhodně, první nebo poslední prvek
+        \item Metoda 3 mediánů 
+        \begin{enumerate}
+            \item vezmeme první, prostřední a poslední prvek 
+            \item největší hodnotu na začátek pole nejmenší na konec pole prostřední hodnot pivot
+        \end{enumerate}
+        \item Dá se použít i na více hodnot
+        
+    \end{itemize}
+\end{frame}
+
+\begin{frame}\frametitle{Jak to funguje}
+\begin{enumerate}
+    \item<1-> Vyberte pivot a přesuntě ho na konec pole 
+    \item<2-> Najděte první prvek z leva, větší než pivot 
+    \item<3-> Najděte první prvek z prava, menší než pivot
+    \item<4-> Pokud je pravý prvek víc v pravo než levý prvek, prvky vyměníme
+    \item<5-> Pokud je prvek z leva víc v pravo než prvek z prava vyměníme prvek z leva za pivot
+    \item<6-> pivot rozdělil pole na dvě části opakujeme na obou částech bez původního pivotu
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Jak to funguje graficky}
+    \includegraphics[width=9cm, height=8cm]{bubblesort.png}
+\end{frame}
+
+\begin{frame}{Pseudokód}
+    \includegraphics[width=8cm, height=5cm]{pseudocode_quick.png}
+\end{frame}
+
+\begin{frame}\frametitle{Složitost}
+    \begin{itemize}
+        \item Nejhorší  $O(n^2)$\\ pokud je pivot největší nebo nejmenší prvek v poli
+        \item Průměrná  $O(n\cdot \log_n)$
+    \end{itemize}
+        \begin{figure}
+            \includegraphics[width=7cm, height=5cm]{quicksort_complexity.png}
+        \end{figure}
+
+\end{frame}
+
+\bluepage{Děkuji za pozornost !}
+
+\begin{frame}\frametitle{zdroje}
+    \url{https://cs.wikipedia.org/wiki/Rychl\%C3\%A9_\%C5\%99azen\%C3\%AD}
+    \url{https://www.youtube.com/watch?v=Hoixgm4-P4M}
+    \url{https://www.javatpoint.com/quick-sort}
+    \url{https://en.wikipedia.org/wiki/Quicksort}
+    \url{https://cacm.acm.org/magazines/1961/7/14472-algorithm-64-quicksort/abstract}
+    \url{https://www.interviewbit.com/tutorial/quicksort-algorithm/}
+\end{frame}
+
+\end{document}
