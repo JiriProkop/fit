@@ -28,6 +28,8 @@ iss/notebooks
 env
 build
 test
+ipp/projekt/tests/
+ips/du3
 
 # Prerequisites
 *.d
@@ -62,3 +64,4 @@ test
 *.su
 *.idb
 *.pdb
+
