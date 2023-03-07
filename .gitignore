@@ -2,12 +2,15 @@
 .vscode
 
 #Documents
+*.zip
+*.txt
 *.pdf
 gaudeamus
 FIT.ovpn
 
 # Projects which have their own repos
 ivs/ivs_project2
+ipk/
 ifj
 ipk
 
