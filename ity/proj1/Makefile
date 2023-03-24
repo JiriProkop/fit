@@ -1,4 +1,4 @@
-FILE=main
+FILE=proj1
 
 .PHONY: $(FILE).pdf all clean
 

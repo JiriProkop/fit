@@ -1,0 +1,136 @@
+\documentclass[a4paper, 11pt]{article}
+\usepackage{graphicx}
+\usepackage{times}
+\usepackage[czech]{babel}
+\usepackage[ left=14mm, text={182mm,252mm},top=23mm]{geometry}
+\usepackage[IL2]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsthm}
+\usepackage{amsmath}
+\usepackage{dsfont}
+\usepackage{enumitem}
+
+\setlist[itemize]{leftmargin=2em}
+\setlength\parindent{1em}
+\newtheorem{definice}{Definice}
+\newtheorem{veta}{Věta}
+
+\begin{document}
+\begin{titlepage}
+\begin{center}
+
+\pagenumbering{gobble}
+\textsc{\Huge Vysoké učení technické v Brně \\}
+\vspace{0.5 em}
+\textsc{\huge Fakulta informačních technologií\\}
+\vspace{\stretch{0.382}}
+{\LARGE Typografie a publikování\,--\,2. projekt\\}
+\vspace{0.4 em}
+{\LARGE Sazba dokumentů a matematických výrazů \\}
+\vspace{\stretch{0.618}}
+\end{center}
+
+{\Large 2023 \hfill Jiří Prokop (xproko47)}
+\end{titlepage}
+\twocolumn
+
+\pagenumbering{arabic}
+
+\section* {Úvod}
+V této úloze si vyzkoušíme sazbu titulní strany, matematických vzorců, prostředí a dalších textových struktur obvyklých
+pro technicky zaměřené texty\,--\,například Definice~\ref{def1} nebo rovnice~\eqref{3} na straně~\pageref{3}. Pro vytvoření
+těchto
+odkazů používáme kombinace příkazů \verb|\label|, \verb|\ref|, \verb|\eqref| a \verb|\pageref|. Před odkazy patří nezlomitelná 
+mezera. Pro zvýrazňování textu jsou zde několikrát použity příkazy \verb|\verb| a \verb|\emph|.
+
+Na titulní straně je použito prostředí \verb|titlepage| a sázení nadpisu podle optického středu s využitím \emph{přesného} 
+zlatého řezu. Tento postup byl probírán na přednášce. Dále jsou na titulní straně použity čtyři různé velikosti písma a mezi 
+dvojicemi řádků textu je použito odřádkování se zadanou relativní velikostí 0,5\,em a 0,4\,em\footnote{Nezapomeňte použít 
+správný typ mezery mezi číslem a jednotkou.}.
+
+\section{Matematický text}
+V této sekci se podíváme na sázení matematických symbolů a výrazů v plynulém textu pomocí prostředí \verb|math|. Definice a 
+věty sázíme pomocí příkazu \verb|\newtheorem| s využitím balíku \verb|amsthm|. Někdy je vhodné použít konstrukci \verb|${}$| 
+nebo \verb|\mbox{}|, která říká, že (matematický) text nemá být zalomen.
+
+\begin{definice}
+\emph{Zásobníkový automat} (ZA) je definován jako sedmice tvaru $A=(Q,\Sigma,\Gamma,\delta,q_0,Z_0,F)$, kde:~\label{def1}
+\begin{itemize}
+\item $Q$ je konečná množina \emph{vnitřních (řídicích) stavů},
+\item $\Sigma$ je konečná \emph{vstupní abeceda},
+\item $\Gamma$ je konečná \emph{zásobníková abeceda},
+\item $\delta$ je \emph{přechodová funkce} $Q\times(\Sigma\,\cup\{\epsilon\})\times\Gamma\rightarrow2^{Q\times\Gamma^*}$,
+\item $q_0 \in Q$ je \emph{počáteční stav}, $Z_0 \in \Gamma$ je \emph{startovací symbol zásobníku} a $F \subseteq Q$ je 
+    množina \emph{koncových stavů}. 
+\end{itemize} 
+\end{definice}
+Nechť $P=(Q,\Sigma,\Gamma,\delta,q_0,Z_0,F)$ je ZA. \emph{Konfigurací} nazveme trojici
+$(q,w,\alpha)\in Q\times\Sigma^*\times\Gamma^*$, kde $q$ je aktuální stav vnitřního řízení, $w$ je dosud
+nezpracovaná část vstupního řetězce a $\alpha=Z_{i_1}Z_{i_2}\ldots Z_{i_k}$ je obsah zásobníku.
+
+\subsection{Podsekce obsahující definici a větu}
+\begin{definice}
+\emph{Řetězec} $w$ \emph{nad abecedou} $\Sigma$ \emph{je přijat ZA} A jestliže $(q_0,w,Z_0)\underset{A}{\overset{*}{\vdash}}$
+$(q_F,\epsilon,\gamma) $ pro nějaké $\gamma \in \Gamma^*$ a ${q_F\in F}$. Množina $L(A)=\{w\ |\ w$ 
+je přijat ZA A$\} \subseteq \Sigma^*$ je \emph{jazyk přijímaný ZA} A. 
+\end{definice}
+\begin{veta}
+Třída jazyků, které jsou přijímány ZA, odpovídá \emph{bezkontextovým jazykům}.
+\end{veta}
+
+\section{Rovnice}
+Složitější matematické formulace sázíme mimo plynulý text pomocí prostředí \verb|displaymath|. Lze umístit i několik výrazů na 
+jeden řádek, ale pak je třeba tyto vhodně oddělit, například příkazem \verb|\quad|. 
+$$
+    1^{2^3} \neq \Delta^{1}_{\Delta^{2}_{\Delta^3}} \quad y^{11}_{22}-\sqrt[9]{x+\sqrt[7]{y}} \quad
+    x > y_1 \leq y^2
+$$
+V rovnici~\eqref{2} jsou využity tři typy závorek s různou \emph{explicitně} definovanou velikostí. Také nepřehlédněte, že nasledující 
+tři rovnice mají zarovnaná rovnítka, a použijte k~tomuto účelu vhodné prostředí.
+\begin{eqnarray}
+    -\cos^2{\beta}& = & \frac{\frac{\frac{1}{x}+\frac{1}{3}}{y}+1000}{ \prod\limits _{j=2}^8 q_j  } ~ \label{1}\\
+    \biggl( \Bigl\{ b \star [3 \div 4]\circ a \Bigl\}^{\frac{2}{3}} \biggl) & = & \log _{10} x  ~ \label{2}\\
+    \int_a^b f(x)\,\mathrm{d}x & = & \int_c^d f(y)\,\mathrm{d}y ~ \label{3}
+\end{eqnarray}
+V této větě vidíme, jak vypadá implicitní vysázení limity $\lim_{m \to \infty} f(m)$ v normálním odstavci textu.
+Podobně je to i~s dalšími symboly jako $\bigcup_{N \in \mathcal{M}}N$ či $\sum_{i=1}^{m}x_{i}^{2}$.
+S vynucením méně úsporné sazby příkazem \verb|\limits| budou vzorce vysázeny v podobě $\lim\limits_{m \to \infty} f(m)$
+a $\sum\limits_{i=1}^{m}x_{i}^{4}$.
+
+\section{Matice}
+Pro sázení matic se velmi často používá prostředí \verb|array| a závorky (\verb|\left|, \verb|\right|). 
+$$
+\text{B} = \begin{vmatrix}
+b_{11} & b_{12} & \cdots & b_{1n} \\
+b_{21} & b_{22} & \cdots & b_{2n} \\
+\vdots & \vdots & \ddots & \vdots \\
+b_{m1} & b_{m2} & \cdots & b_{mn}
+\end{vmatrix}
+= \begin{vmatrix}
+    t & u \\
+    v & w
+\end{vmatrix}
+=tw -uv
+$$
+
+$$
+\mathds{X} = \textbf{Y} \iff
+\begin{bmatrix}
+    & \Omega + \Delta & \hat{\psi} \\
+\vec{\pi} & \omega &
+\end{bmatrix}
+\neq 42
+$$
+
+Prostředí \verb|array| lze úspěšně využít i jinde, například na pravé straně následující rovnice. Kombinační číslo na levé 
+straně vysázejte pomocí příkazu \verb|\binom|.
+
+$$ 
+\binom{n}{k} = \left\{
+\begin{array}{c l}
+0 & \text{pro } k < 0 \\
+\frac{n!}{k!(n-k)!} & \text{pro } 0 \leq k \leq n \\
+0 & \text{pro } k > 0 
+\end{array} \right. 
+$$
+\end{document}
