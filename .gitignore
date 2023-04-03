@@ -7,6 +7,7 @@
 *.pdf
 gaudeamus
 FIT.ovpn
+__pycache__
 
 # Projects which have their own repos
 ivs/ivs_project2
