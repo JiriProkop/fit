@@ -1,4 +1,4 @@
-FILE=proj2
+FILE=proj3
 
 .PHONY: $(FILE).pdf all clean
 
