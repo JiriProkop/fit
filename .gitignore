@@ -1,5 +1,5 @@
 #Vs code
-.vscode
+.*
 
 #Documents
 *.zip
@@ -14,6 +14,7 @@ ivs/ivs_project2
 ipk/
 ifj
 ipk
+ids/ids-projekt
 
 # Images
 *.png
