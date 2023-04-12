@@ -1,7 +1,7 @@
 import argparse
 import sys
 import os
-import instruction as instr
+import instructions as instr
 import xml.etree.ElementTree as ET
 import error
 
@@ -76,7 +76,7 @@ for child in root:
     if child.attrib["opcode"] == "LABEL":
         instr.Label().check_structure(child)
         instr.Label().check_sem(child)
-        instr.Label().exec(child, line)
+        instr.Label().exec(child)
     line += 1
     if child.attrib["opcode"] == "MOVE":
         instr.Move().check_structure(child)
