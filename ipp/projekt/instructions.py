@@ -1,9 +1,11 @@
 import error
+from types import *
 
 
 class Instruction:
     labels = {}
     call_stack = []
+    data_stack = []
     global_frame = {}
     local_frames = []
     frames = {'GF': global_frame, 'LF': local_frames}
@@ -68,21 +70,19 @@ class Instruction:
         parts = var.split('@')
         if parts[0] == LF:
             if cls.frames['LF'][-1][parts[1]] == "":
-                error.exit("varieble isn't defined!", error.Err_codes.nonexistant_var_used.value)
+                error.exit("varieble doesn't have a value!", error.Err_codes.missing_value.value)
         else:
             if cls.frames[parts[0]][parts[1]] == "":
-                error.exit("varieble isn't defined!", error.Err_codes.nonexistant_var_used.value)
+                error.exit("varieble doesn't have a value!", error.Err_codes.missing_value.value)
 
     @classmethod
     def var_set(cls, var, name, value):
         # trusts var existence was already checked
         parts = var.split('@')
         if parts[0] == LF:
-            cls.frames['LF'][-1][parts[1]].name = name
-            cls.frames['LF'][-1][parts[1]].value = value
+            cls.frames['LF'][-1][parts[1]] = Type(name, value)
         else:
-            cls.frames[parts[0]][parts[1]].name = name
-            cls.frames[parts[0]][parts[1]].value = value
+            cls.frames[parts[0]][parts[1]] = Type(name, value)
 
     @classmethod
     def frame_exists(cls, frame):
@@ -98,6 +98,58 @@ class Instruction:
         if label not in cls.labels:
             error.exit("label does not exist!", error.Err_codes.semantic_check_err.value)
 
+    @classmethod
+    def const_hasvalue(cls, const):
+        if const.text == "":
+            error.exit("missing constant value!", error.Err_codes.missing_value.value)
+
+    @classmethod
+    def symb_exists_and_hasvalue(cls, symb):
+        # symb is either const or is var and has to have value
+        if cls.arg_isnot_const(symb):
+            cls.var_exists(symb)
+            cls.var_hasvalue(symb)
+        else:
+            cls.const_hasvalue(symb)
+
+    @classmethod
+    def symb_check_type(cls, symb, type):
+        if cls.arg_isnot_const(symb):
+            parts = symb.text.split('@')
+            if parts[0] == 'LF':
+                ok = cls.frames['LF'][-1][parts[1]].is_type(type)
+            else:
+                ok = cls.frames[parts[0]][parts[1]].is_type(type)
+        else:
+            ok = arg.attrib["type"] == type
+        if not ok:
+            error.exit("wrong <symb> types!", error.Err_codes.wrong_operand_types.value)
+
+    @classmethod
+    def symb_getvalue(cls, symb):
+        if cls.arg_isnot_const(symb):
+            parts = symb.text.split('@')
+            if parts[0] == 'LF':
+                return cls.frames['LF'][-1][parts[1]].value
+            else:
+                return cls.frames[parts[0]][parts[1]].value
+        else:
+            tmp = Type(symb.attrib["type"], symb.text)
+            return tmp.value
+
+    @classmethod
+    def symb_getasType(cls, symb):
+        if cls.arg_isnot_const(symb):
+            parts = symb.text.split('@')
+            if parts[0] == 'LF':
+                return cls.frames['LF'][-1][parts[1]]
+            else:
+                return cls.frames[parts[0]][parts[1]]
+        else:
+            return Type(symb.attrib["type"], symb.text)
+
+# --------------------------------------------------------------------------------------------------------
+
 
 class Label(Instruction):
     # LABEL <label>
@@ -111,7 +163,7 @@ class Label(Instruction):
     def check_sem(cls, child):
         if child[0].text in cls.labels:
             error.exit("redefinition of label!", error.Err_codes.semantic_check_err.value)
-    
+
     @classmethod
     def exec(cls, child):
         cls.labels[child[0].text] = child.getparent().index(child)
@@ -252,6 +304,7 @@ class Call(Instruction):
         cls.call_stack.append(int(1 + child.getparent().index(child)))
         return cls.labels[child[0].text]
 
+
 class Return(Instruction):
     # pop call stack pc and return it
 
@@ -270,37 +323,249 @@ class Return(Instruction):
     def exec(cls, child):
         return cls.call_stack.pop()
 
-class Type:
-    types = ('nil', 'bool', 'int', 'string')
+
+class Pushs(Instruction):
+    # PUSHS <symb>
 
     @classmethod
-    def isnot_type(cls, type):
-        return type not in cls.types
+    def check_structure(cls, child):
+        if cls.arg_count(child) != 1 or cls.arg_isnot_symb(child[0]):
+            cls.bad_xml()
 
-    def __escape_remove__(self, text):
-        res = ''
-        i = 0
-        while i < len(text):
-            if text[i] == '\\':
-                # 3 for 3 escape digits and 1 cause len doesnt count from 0 but from 1
-                if i + 3 + 1 > len(text):
-                    print(len(text), i + 4, text[i])
-                    error.exit("escape sequnce has to be 3 digits long!",
-                               error.Err_codes.invalid_string_operation.value)
-                escape = int(text[i + 1] + text[i + 2] + text[i + 3])
-                res += str(chr(escape))
-                i += 4
+    @classmethod
+    def check_sem(cls, child):
+        # if symb is var -> check it's existence
+        if not cls.arg_isnot_var(child[0]):
+            cls.var_exists(child[0])
+            cls.var_hasvalue(child[0])
+
+    @classmethod
+    def exec(cls, child):
+        if not cls.arg_isnot_var(child[0]):
+            name = child[1].attrib["type"]
+            value = child[1].text
+        else:
+            parts = var.split('@')
+            if parts[0] == 'LF':
+                name = cls.frames[parts[0]][-1][parts[1]].name
+                value = cls.frames[parts[0]][-1][parts[1]].value
             else:
-                res += text[i]
-                i += 1
-        return res
+                name = cls.frames[parts[0]][parts[1]].name
+                value = cls.frames[parts[0]][parts[1]].value
+        cls.data_stack.append(Type(name, value))
 
-    def __init__(self, name, value):
-        if self.isnot_type(name):
-            raise ValueError("Invalid type name.")
-        if name == "string":
-            value = self.__escape_remove__(value)
-        elif name == int:
-            value = int(value)
-        self.name = name
-        self.value = value
+
+class Pops(Instruction):
+    # POPS <var>
+
+    @classmethod
+    def check_structure(cls, child):
+        if cls.arg_count(child) != 1 or cls.arg_isnot_var(child[0]):
+            cls.bad_xml()
+
+    @classmethod
+    def check_sem(cls, child):
+        # data_stack cannot be empty
+        if len(cls.data_stack) == 0:
+            error.exit("cannot pop empty stack!", error.Err_codes.missing_value.value)
+        # var has to exist
+        cls.var_exists(child[0])
+
+    @classmethod
+    def exec(cls, child):
+        tmp = cls.data_stack.pop()
+        cls.var_set(child[0], tmp.name, tmp.value)
+
+
+class Add(Instruction):
+    # ADD <var> <symb1> <symb2>
+
+    @classmethod
+    def check_structure(cls, child):
+        if cls.arg_count(child) != 3 or cls.arg_isnot_var(child[0]) or cls.arg_isnot_symb(child[1]) or cls.arg_isnot_symb(child[2]):
+            cls.bad_xml()
+
+    @classmethod
+    def check_sem(cls, child):
+        cls.var_exists(child[0])
+        cls.symb_exists_and_hasvalue(child[1])
+        cls.symb_exists_and_hasvalue(child[2])
+        cls.symb_check_type(child[1], "int")
+        cls.symb_check_type(child[2], "int")
+
+    @classmethod
+    def exec(cls, child):
+        res = cls.symb_getvalue(child[1]) + cls.symb_getvalue(child[2])
+        cls.var_set(child[0], 'int', res)
+
+
+class Sub(Add):
+    # SUB <var> <symb1> <symb2>
+
+    @classmethod
+    def exec(cls, child):
+        res = cls.symb_getvalue(child[1]) - cls.symb_getvalue(child[2])
+        cls.var_set(child[0], 'int', res)
+
+
+class Mul(Add):
+    # MUL <var> <symb1> <symb2>
+
+    @classmethod
+    def exec(cls, child):
+        res = cls.symb_getvalue(child[1]) * cls.symb_getvalue(child[2])
+        cls.var_set(child[0], 'int', res)
+
+
+class Idiv(Add):
+    # IDIV <var> <symb1> <symb2>
+    #  <symb1> // <symb2>
+
+    @classmethod
+    def check_sem(cls, child):
+        cls.var_exists(child[0])
+        cls.symb_exists_and_hasvalue(child[1])
+        cls.symb_exists_and_hasvalue(child[2])
+        cls.symb_check_type(child[1], "int")
+        cls.symb_check_type(child[2], "int")
+        if cls.symb_getvalue(child[2]) == 0:
+            error.exit("division by zero!", error.Err_codes.bad_operand_value.value)
+
+    @classmethod
+    def exec(cls, child):
+        res = cls.symb_getvalue(child[1]) // cls.symb_getvalue(child[2])
+        cls.var_set(child[0], 'int', res)
+
+
+class Lt(Instruction):
+    # LT <var> <symb1> <symb2>
+
+    @classmethod
+    def check_structure(cls, child):
+        if cls.arg_count(child) != 3 or cls.arg_isnot_var(child[0]) or cls.arg_isnot_symb(child[1]) or cls.arg_isnot_symb(child[2]):
+            cls.bad_xml()
+
+    @classmethod
+    def check_sem(cls, child):
+        cls.var_exists(child[0])
+        cls.symb_exists_and_hasvalue(child[1])
+        cls.symb_exists_and_hasvalue(child[2])
+
+    @classmethod
+    def exec(cls, child):
+        result = cls.symb_getasType(child[1]) < cls.symb_getasType(child[2])
+        cls.var_set(child[0], 'bool', result)
+
+
+class Gt(Lt):
+    # GT <var> <symb1> <symb2>
+
+    @classmethod
+    def exec(cls, child):
+        result = cls.symb_getasType(child[1]) > cls.symb_getasType(child[2])
+        cls.var_set(child[0], 'bool', result)
+
+class Eq(Lt):
+    # EQ <var> <symb1> <symb2>
+
+    @classmethod
+    def exec(cls, child):
+        result = cls.symb_getasType(child[1]) == cls.symb_getasType(child[2])
+        cls.var_set(child[0], 'bool', result)
+
+class And(Instruction):
+    # AND <var> <symb1> <symb2>
+    
+    @classmethod
+    def check_structure(cls, child):
+        if cls.arg_count(child) != 3 or cls.arg_isnot_var(child[0]) or cls.arg_isnot_symb(child[1]) or cls.arg_isnot_symb(child[2]):
+            cls.bad_xml()
+
+    @classmethod
+    def check_sem(cls, child):
+        cls.var_exists(child[0])
+        cls.symb_exists_and_hasvalue(child[1])
+        cls.symb_exists_and_hasvalue(child[2])
+        cls.symb_check_type(child[1], 'bool')
+        cls.symb_check_type(child[2], 'bool')
+
+    @classmethod
+    def exec(cls, child):
+        result = cls.symb_getasType(child[1]) and cls.symb_getasType(child[2])
+        cls.var_set(child[0], 'bool', result)
+
+class Or(And):
+    # OR <var> <symb1> <symb2>
+
+    @classmethod
+    def exec(cls, child):
+        result = cls.symb_getasType(child[1]) or cls.symb_getasType(child[2])
+        cls.var_set(child[0], 'bool', result)
+
+class Not(Instruction):
+    # NOT <var> <symb>
+
+    @classmethod
+    def check_structure(cls, child):
+        if cls.arg_count(child) != 2 or cls.arg_isnot_var(child[0]) or cls.arg_isnot_symb(child[1]):
+            cls.bad_xml()
+
+    @classmethod
+    def check_sem(cls, child):
+        cls.var_exists(child[0])
+        cls.symb_exists_and_hasvalue(child[1])
+        cls.symb_check_type(child[1], 'bool')
+
+    @classmethod
+    def exec(cls, child):
+        result = not cls.symb_getasType(child[1])
+        cls.var_set(child[0], 'bool', result)
+
+
+class Int2char(Instruction):
+    # INT2CHAR <var> <symb>
+
+    @classmethod
+    def check_structure(cls, child):
+        if cls.arg_count(child) != 2 or cls.arg_isnot_var(child[0]) or cls.arg_isnot_symb(child[1]):    
+            cls.bad_xml()
+    
+    @classmethod
+    def check_sem(cls, child):
+        cls.var_exists(child[0])
+        cls.symb_exists_and_hasvalue(child[1])
+        cls.symb_check_type(child[1], 'int') #TODO not sure
+
+    @classmethod
+    def exec(cls, child):
+        try:
+            char = cls.symb_getvalue(child[1])
+        except:
+            error.exit("non valid Unicode value!", error.Err_codes.invalid_string_operation.value)
+        cls.var_set(child[0], 'string', char)
+
+class Stri2int(Instruction):
+    # STRI2CHAR <var> <symb1> <symb2>
+    
+    @classmethod
+    def check_structure(cls, child):
+        if cls.arg_count(child) != 3 or cls.arg_isnot_var(child[0]) or cls.arg_isnot_symb(child[1]) or cls.arg_isnot_symb(child[2]):
+            cls.bad_xml()
+
+    @classmethod
+    def check_sem(cls, child):
+        cls.var_exists(child[0])
+        cls.symb_exists_and_hasvalue(child[1])
+        cls.symb_exists_and_hasvalue(child[2])
+        cls.symb_check_type(child[1], 'string')
+        cls.symb_check_type(child[2], 'int')
+
+    @classmethod
+    def exec(cls, child):
+        string = cls.symb_getvalue(child[1])
+        try:
+            result = ord(string[cls.symb_getvalue(child[2])])
+        except:
+            error.exit("non valid Unicode value!", error.Err_codes.invalid_string_operation.value)
+        cls.var_set(child[0], 'int', result)
+
