@@ -23,46 +23,61 @@ args = parser.parse_args()
 def check_file_access(file):
     return os.access(file, os.R_OK)
 
-# TODO input read
+
 if not args.source and not args.input:
     error.exit("destination of both source and input is NOT given!",
                error.Err_codes.missing_param.value)
 elif not args.source:
-    if not check_file_access(args.input):
-        error.exit("couldn't open the file!",
-                   error.Err_codes.input_file_err.value)
+    # source from stdin
     try:
         tree = ET.parse(sys.stdin)
     except:
-        error.exit("could not parse the XML!",
-                   error.Err_codes.xml_wrong_format.value)
+        error.exit("could not parse the XML!", error.Err_codes.xml_wrong_format.value)
+    # input from file
+    try:
+        input_text = open(args.input, 'r')
+        input_text = input_text.readline
+    except:
+        error.exit("couldn't open the input file!", error.Err_codes.input_file_err.value)
 elif not args.input:
+    # source from file
     if not check_file_access(args.source):
         error.exit("couldn't open the file!", error.Err_codes.source_err.value)
     try:
         tree = ET.parse(args.source)
     except:
-        error.exit("could not parse the XML!",
-                   error.Err_codes.xml_wrong_format.value)
+        error.exit("could not parse the XML!", error.Err_codes.xml_wrong_format.value)
+    # input from stdin
+    input_text = input
 else:
+    # source from file
+    if not check_file_access(args.source):
+        error.exit("couldn't open the file!", error.Err_codes.source_err.value)
     try:
         tree = ET.parse(args.source)
     except:
-        error.exit("could not parse the XML!",
-                   error.Err_codes.xml_wrong_format.value)
+        error.exit("could not parse the XML!", error.Err_codes.xml_wrong_format.value)
+    # input from file
+    try:
+        input_text = open(args.input, 'r')
+        input_text = input_text.readline
+    except:
+        error.exit("couldn't open the input file!", error.Err_codes.input_file_err.value)
+
 
 # XML is now parsed in tree, regardless if it comes from stdin or file
 root = tree.getroot()
 
 if root.attrib["language"] != "IPPcode23":
-    error.exit("IPPcode23 header required!",
-               error.Err_codes.xml_bad_structure.value)
+    error.exit("IPPcode23 header required!", error.Err_codes.xml_bad_structure.value)
 
 # sorts the child elements by value of order
 root[:] = sorted(root, key=lambda child: int(child.attrib["order"]))
+# give necessery data to instructions
+instr.Instruction.root = root
+instr.Instruction.input = input_text
 
 # get all labels and check xml structure
-line = 1
 orders = []
 for child in root:
     # check uniqueness of the order num
@@ -77,19 +92,60 @@ for child in root:
         instr.Label().check_structure(child)
         instr.Label().check_sem(child)
         instr.Label().exec(child)
-    line += 1
-    if child.attrib["opcode"] == "MOVE":
-        instr.Move().check_structure(child)
-        instr.Move().check_sem(child)
-        
 
-print("DONE")
-stringg = instr.Type("string", "řetězec\\032s\\032lomítkem\\032\\092\\032a\\010novým\\035řádkem")
 instruction_switch = {
-    #tady odkazy na jednotlive instrukce 
+    'MOVE' : instr.Move,
+    'CREATEFRAME' : instr.Createframe,
+    'PUSHFRAME' : instr.Pushframe,
+    'POPFRAME' : instr.Popframe,
+    'DEFVAR' : instr.Defvar,
+    'CALL' : instr.Call,
+    'RETURN' : instr.Return,
+    'PUSHS' : instr.Pushs,
+    'POPS' : instr.Pops,
+    'ADD' : instr.Add,
+    'SUB' : instr.Sub,
+    'MUL' : instr.Mul,
+    'IDIV' : instr.Idiv,
+    'LT' : instr.Lt,
+    'GT' : instr.Gt,
+    'EQ' : instr.Eq,
+    'AND' : instr.And,
+    'OR' : instr.Or,
+    'NOT' : instr.Not,
+    'INT2CHAR' : instr.Int2char,
+    'STRI2INT' : instr.Stri2int,
+    'READ' : instr.Read,
+    'WRITE' : instr.Write,
+    'CONCAT' : instr.Concat,
+    'STRLEN' : instr.Strlen,
+    'GETCHAR' : instr.Getchar,
+    'SETCHAR' : instr.Setchar,
+    'TYPE' : instr.Type,
+    'JUMP' : instr.Jump,
+    'JUMPIFEQ' : instr.Jumpifeq,
+    'JUMPIFNEQ' : instr.Jumpifeq,
+    'EXIT' : instr.Exit,
+    'DPRINT' : instr.Dprint,
+    'BREAK' : instr.Break
 }
 
+max_index = list(root).index(list(root)[-1])
+i = 0
+while i <= max_index:
+    current_inst = root[i].attrib['opcode'].upper()
+    if current_inst == 'LABEL':
+        i += 1
+        continue
+    try:
+        instruction_switch[current_inst]
+    except:
+        error.exit("nonexistant opcode!", error.Err_codes.xml_bad_structure.value)
 
-
-# TODO vytvor classu pro kazdou instrukci
-# projed znovu a provadej postupne instrukce (while - kvuli skakani)
+    instruction_switch[current_inst].check_structure(root[i])
+    instruction_switch[current_inst].check_sem(root[i])
+    jump = instruction_switch[current_inst].exec(root[i])
+    if jump is None:
+        i += 1
+    else:
+        i = jump
