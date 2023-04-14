@@ -14,8 +14,7 @@ class CustomArgumentParser(argparse.ArgumentParser):
 
 # arg parsing
 parser = CustomArgumentParser(description='IPP23 interpret.')
-parser.add_argument('--source', type=str,
-                    help="Source code file's destination.")
+parser.add_argument('--source', type=str, help="Source code file's destination.")
 parser.add_argument('--input', type=str, help="destination of the input file - for read command")
 args = parser.parse_args()
 
@@ -72,10 +71,51 @@ if root.attrib["language"] != "IPPcode23":
     error.exit("IPPcode23 header required!", error.Err_codes.xml_bad_structure.value)
 
 # sorts the child elements by value of order
-root[:] = sorted(root, key=lambda child: int(child.attrib["order"]))
+try:
+    root[:] = sorted(root, key=lambda child: int(child.attrib["order"]))
+except:
+    error.exit("nonvalid order!", error.Err_codes.xml_bad_structure.value)
 # give necessery data to instructions
 instr.Instruction.root = root
 instr.Instruction.input = input_text
+
+instruction_switch = {
+    'MOVE': instr.Move,
+    'CREATEFRAME': instr.Createframe,
+    'PUSHFRAME': instr.Pushframe,
+    'POPFRAME': instr.Popframe,
+    'DEFVAR': instr.Defvar,
+    'CALL': instr.Call,
+    'RETURN': instr.Return,
+    'PUSHS': instr.Pushs,
+    'POPS': instr.Pops,
+    'ADD': instr.Add,
+    'SUB': instr.Sub,
+    'MUL': instr.Mul,
+    'IDIV': instr.Idiv,
+    'LT': instr.Lt,
+    'GT': instr.Gt,
+    'EQ': instr.Eq,
+    'AND': instr.And,
+    'OR': instr.Or,
+    'NOT': instr.Not,
+    'INT2CHAR': instr.Int2char,
+    'STRI2INT': instr.Stri2int,
+    'READ': instr.Read,
+    'WRITE': instr.Write,
+    'CONCAT': instr.Concat,
+    'STRLEN': instr.Strlen,
+    'GETCHAR': instr.Getchar,
+    'SETCHAR': instr.Setchar,
+    'TYPE': instr.Type,
+    'JUMP': instr.Jump,
+    'JUMPIFEQ': instr.Jumpifeq,
+    'JUMPIFNEQ': instr.Jumpifeq,
+    'EXIT': instr.Exit,
+    'DPRINT': instr.Dprint,
+    'BREAK': instr.Break,
+    'LABEL': ''
+}
 
 # get all labels and check xml structure
 orders = []
@@ -83,64 +123,50 @@ for child in root:
     # check uniqueness of the order num
     order = int(child.attrib["order"])
     if order in orders:
-        error.exit("Duplicit order values!", error.Err_codes().xml_bad_structure.value)
+        error.exit("Duplicit order values!", error.Err_codes.xml_bad_structure.value)
+    elif order < 1:
+        error.exit("nonvalid order num!", error.Err_codes.xml_bad_structure.value)
+    elif child.tag != 'instruction':
+        error.exit("invalid instruction tag!", error.Err_codes.xml_bad_structure.value)
     else:
         orders.append(order)
     # sorts the args by it's number
-    child[:] = sorted(child, key=lambda arg: int(arg.tag[3:]))
-    if child.attrib["opcode"] == "LABEL":
+    
+    try:
+        child[:] = sorted(child, key=lambda arg: int(arg.tag[3:]))
+        # check arg tag numbers
+        if instr.Instruction.arg_count(child) == 1:
+            if int(child[0].tag[3:]) != 1:
+                raise SyntaxError()
+        elif instr.Instruction.arg_count(child) == 2:
+            if int(child[0].tag[3:]) != 1 or int(child[1].tag[3:]) != 2:
+                raise SyntaxError()
+        elif instr.Instruction.arg_count(child) == 3:
+            if int(child[0].tag[3:]) != 1 or int(child[1].tag[3:]) != 2 or int(child[2].tag[3:]) != 3:
+                raise SyntaxError()
+    except:
+        error.exit("invalid argument tag!", error.Err_codes.xml_bad_structure.value)
+
+    try:
+        instruction_switch[child.attrib["opcode"].upper()]
+    except:
+        error.exit("nonexistant opcode!", error.Err_codes.xml_bad_structure.value)
+    if child.attrib["opcode"].upper() == "LABEL":
         instr.Label().check_structure(child)
         instr.Label().check_sem(child)
         instr.Label().exec(child)
 
-instruction_switch = {
-    'MOVE' : instr.Move,
-    'CREATEFRAME' : instr.Createframe,
-    'PUSHFRAME' : instr.Pushframe,
-    'POPFRAME' : instr.Popframe,
-    'DEFVAR' : instr.Defvar,
-    'CALL' : instr.Call,
-    'RETURN' : instr.Return,
-    'PUSHS' : instr.Pushs,
-    'POPS' : instr.Pops,
-    'ADD' : instr.Add,
-    'SUB' : instr.Sub,
-    'MUL' : instr.Mul,
-    'IDIV' : instr.Idiv,
-    'LT' : instr.Lt,
-    'GT' : instr.Gt,
-    'EQ' : instr.Eq,
-    'AND' : instr.And,
-    'OR' : instr.Or,
-    'NOT' : instr.Not,
-    'INT2CHAR' : instr.Int2char,
-    'STRI2INT' : instr.Stri2int,
-    'READ' : instr.Read,
-    'WRITE' : instr.Write,
-    'CONCAT' : instr.Concat,
-    'STRLEN' : instr.Strlen,
-    'GETCHAR' : instr.Getchar,
-    'SETCHAR' : instr.Setchar,
-    'TYPE' : instr.Type,
-    'JUMP' : instr.Jump,
-    'JUMPIFEQ' : instr.Jumpifeq,
-    'JUMPIFNEQ' : instr.Jumpifeq,
-    'EXIT' : instr.Exit,
-    'DPRINT' : instr.Dprint,
-    'BREAK' : instr.Break
-}
-
-max_index = list(root).index(list(root)[-1])
+try:
+    max_index = list(root).index(list(root)[-1])
+except:
+    # means there're no instructions
+    exit()
 i = 0
 while i <= max_index:
     current_inst = root[i].attrib['opcode'].upper()
     if current_inst == 'LABEL':
         i += 1
         continue
-    try:
-        instruction_switch[current_inst]
-    except:
-        error.exit("nonexistant opcode!", error.Err_codes.xml_bad_structure.value)
 
     instruction_switch[current_inst].check_structure(root[i])
     instruction_switch[current_inst].check_sem(root[i])

@@ -312,7 +312,7 @@ class Call(Instruction):
 
     @classmethod
     def exec(cls, child):
-        cls.call_stack.append(int(1 + child.getparent().index(child)))
+        cls.call_stack.append(int(1 + list(cls.root).index(child)))
         return cls.labels[child[0].text]
 
 
@@ -352,9 +352,9 @@ class Pushs(Instruction):
 
     @classmethod
     def exec(cls, child):
-        if not cls.arg_isnot_var(child[0]):
-            name = child[1].attrib["type"]
-            value = child[1].text
+        if cls.arg_isnot_var(child[0]):
+            name = child[0].attrib["type"]
+            value = child[0].text
         else:
             parts = child[0].text.split('@')
             if parts[0] == 'LF':
@@ -549,12 +549,12 @@ class Int2char(Instruction):
     def check_sem(cls, child):
         cls.var_exists(child[0])
         cls.symb_exists_and_hasvalue(child[1])
-        cls.symb_check_type(child[1], 'int')  # TODO not sure
+        cls.symb_check_type(child[1], 'int')
 
     @classmethod
     def exec(cls, child):
         try:
-            char = cls.symb_getvalue(child[1])
+            char = chr(cls.symb_getvalue(child[1]))
         except:
             error.exit("non valid Unicode value!", error.Err_codes.invalid_string_operation.value)
         cls.var_set(child[0], 'string', char)
@@ -580,7 +580,10 @@ class Stri2int(Instruction):
     def exec(cls, child):
         string = cls.symb_getvalue(child[1])
         try:
-            result = ord(string[cls.symb_getvalue(child[2])])
+            index = cls.symb_getvalue(child[2])
+            if index < 0:
+                raise IndexError()
+            result = ord(string[index])
         except:
             error.exit("non valid Unicode value!", error.Err_codes.invalid_string_operation.value)
         cls.var_set(child[0], 'int', result)
@@ -613,7 +616,7 @@ class Read(Instruction):
                 cls.var_set(child[0], 'bool', False)
         else:
             try:
-                cls.var_set(child[0], child[1].text, value)
+                cls.var_set(child[0], child[1].text, value.strip())
             except:
                 error.exit("invalid input, cannot convert to given data type!", error.Err_codes.bad_operand_value.value)
 
@@ -734,11 +737,14 @@ class Setchar(Instruction):
     @classmethod
     def exec(cls, child):
         index = cls.symb_getvalue(child[1])
-        char = cls.symb_getvalue(child[2])[0]
+        try:
+            char = cls.symb_getvalue(child[2])[0]
+        except:
+            error.exit("empty string!", error.Err_codes.invalid_string_operation.value)
         string = cls.symb_getvalue(child[0])
-        if char == "" or index > len(string) - 1:
-            error.exit("out of bounds index or empty string!", error.Err_codes.invalid_string_operation.value)
-        string[index] = char
+        if index > len(string) - 1:
+            error.exit("out of bounds index!", error.Err_codes.invalid_string_operation.value)
+        string = string[:index] + char + string[index + 1:]
         cls.var_set(child[0], 'string', string)
 
 
@@ -821,10 +827,11 @@ class Exit(Instruction):
     @classmethod
     def check_sem(cls, child):
         cls.symb_exists_and_hasvalue(child[0])
+        cls.symb_check_type(child[0], 'int')
 
     @classmethod
     def exec(cls, child):
-        exit_code = cls.symb_getvalue(child[0])
+        exit_code = int(cls.symb_getvalue(child[0]))
         if exit_code < 0 or exit_code > 49:
             error.exit("nonvalid exit value!", error.Err_codes.bad_operand_value.value)
         sys.exit(exit_code)

@@ -1,3 +1,5 @@
+import error
+
 class Mytype:
     names = ('nil', 'bool', 'int', 'string', None)
 
@@ -30,11 +32,19 @@ class Mytype:
             if value is None:
                 value = ""
             else:
-                value = self.__escape_remove__(value)
+                value = self.__escape_remove__(str(value))
         elif name == 'int':
-            value = int(value)
+            try:
+                value = int(value)
+            except:
+                error.exit("invalid integer value!", error.Err_codes.xml_bad_structure.value)
         elif name == 'bool':
-            value = bool(value.capitalize())  # careful! any non empty string which is not 'False' is converted to True
+            if value == 'false':
+                value = False
+            try:
+                value = bool(value.capitalize())  # careful! any non empty string which is not 'False' is converted to True
+            except:
+                pass
         self.name = name
         self.value = value
 
