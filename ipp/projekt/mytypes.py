@@ -37,12 +37,13 @@ class Mytype:
             try:
                 value = int(value)
             except:
-                error.exit("invalid integer value!", error.Err_codes.xml_bad_structure.value)
+                raise TypeError("invalid integer value!")
         elif name == 'bool':
-            if value == 'false':
-                value = False
             try:
-                value = bool(value.capitalize())  # careful! any non empty string which is not 'False' is converted to True
+                if str(value) == 'false':
+                    value = False
+                else:
+                    value = bool(value.capitalize())  # careful! any non empty string which is not 'False' is converted to True
             except:
                 pass
         self.name = name
@@ -52,7 +53,7 @@ class Mytype:
         return self.name == type
 
     def __eq__(self, other):
-        if self.name != other.name:
+        if self.name != 'nil' and other.name != 'nil' and self.name != other.name:
             error.exit("EQ can be used only with same types!", error.Err_codes.wrong_operand_types.value)
         else:
             return self.value == other.value
@@ -75,7 +76,7 @@ class Mytype:
     def __or__(self, other):
         if self.name != 'bool' or other.name != 'bool':
             error.exit("'or' can be used only with bools!", error.Err_codes.wrong_operand_types.value)
-        return self.value or other.value
+        return bool(self.value) or bool(other.value)
 
     def __and__(self, other):
         if self.name != 'bool' or other.name != 'bool':

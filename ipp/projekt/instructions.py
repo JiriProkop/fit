@@ -147,7 +147,7 @@ class Instruction:
             return tmp.value
 
     @classmethod
-    def Mytypesymb_getasMytype(cls, symb):
+    def symb_getasMytype(cls, symb):
         if cls.arg_isnot_const(symb):
             parts = symb.text.split('@')
             if parts[0] == 'LF':
@@ -191,6 +191,7 @@ class Move(Instruction):
         # var can be empty, symbol not, both have to be defined
         cls.var_exists(child[0])
         if not cls.arg_isnot_var(child[1]):
+            cls.var_exists(child[1])
             cls.var_hasvalue(child[1])
 
     @classmethod
@@ -201,7 +202,7 @@ class Move(Instruction):
             value = child[1].text
         else:
             # arg2 is var
-            parts = child[1].split('@')
+            parts = child[1].text.split('@')
             if parts[0] == 'LF':
                 name = cls.frames[parts[0]][-1][parts[1]].name
                 value = cls.frames[parts[0]][-1][parts[1]].value
@@ -464,7 +465,7 @@ class Lt(Instruction):
 
     @classmethod
     def exec(cls, child):
-        result = cls.Mytypesymb_getasMytype(child[1]) < cls.Mytypesymb_getasMytype(child[2])
+        result = cls.symb_getasMytype(child[1]) < cls.symb_getasMytype(child[2])
         cls.var_set(child[0], 'bool', result)
 
 
@@ -473,7 +474,7 @@ class Gt(Lt):
 
     @classmethod
     def exec(cls, child):
-        result = cls.Mytypesymb_getasMytype(child[1]) > cls.Mytypesymb_getasMytype(child[2])
+        result = cls.symb_getasMytype(child[1]) > cls.symb_getasMytype(child[2])
         cls.var_set(child[0], 'bool', result)
 
 
@@ -482,7 +483,7 @@ class Eq(Lt):
 
     @classmethod
     def exec(cls, child):
-        result = cls.Mytypesymb_getasMytype(child[1]) == cls.Mytypesymb_getasMytype(child[2])
+        result = cls.symb_getasMytype(child[1]) == cls.symb_getasMytype(child[2])
         cls.var_set(child[0], 'bool', result)
 
 
@@ -504,7 +505,7 @@ class And(Instruction):
 
     @classmethod
     def exec(cls, child):
-        result = cls.Mytypesymb_getasMytype(child[1]) and cls.Mytypesymb_getasMytype(child[2])
+        result = cls.symb_getasMytype(child[1]).__and__(cls.symb_getasMytype(child[2]))
         cls.var_set(child[0], 'bool', result)
 
 
@@ -513,7 +514,8 @@ class Or(And):
 
     @classmethod
     def exec(cls, child):
-        result = cls.Mytypesymb_getasMytype(child[1]) or cls.Mytypesymb_getasMytype(child[2])
+        # don't know why but this doesn't work with basic 'or'
+        result = cls.symb_getasMytype(child[1]).__or__(cls.symb_getasMytype(child[2]))  
         cls.var_set(child[0], 'bool', result)
 
 
@@ -533,7 +535,7 @@ class Not(Instruction):
 
     @classmethod
     def exec(cls, child):
-        result = not cls.Mytypesymb_getasMytype(child[1])
+        result = cls.symb_getasMytype(child[1]).__not__()
         cls.var_set(child[0], 'bool', result)
 
 
@@ -606,19 +608,21 @@ class Read(Instruction):
     @classmethod
     def exec(cls, child):
         try:
-            value = cls.input()
+            value = cls.input().strip()
         except:
             error.exit("EOF encountered when reading input", error.Err_codes.missing_value.value)
-        if child[1].text == 'bool':
+        if value == '':
+            cls.var_set(child[0], 'nil', 'nil')
+        elif child[1].text == 'bool':
             if value.lower() == 'true':
                 cls.var_set(child[0], 'bool', True)
             else:
                 cls.var_set(child[0], 'bool', False)
         else:
             try:
-                cls.var_set(child[0], child[1].text, value.strip())
+                cls.var_set(child[0], child[1].text, value)
             except:
-                error.exit("invalid input, cannot convert to given data type!", error.Err_codes.bad_operand_value.value)
+                cls.var_set(child[0], 'nil', 'nil')
 
 
 class Write(Instruction):
@@ -635,7 +639,7 @@ class Write(Instruction):
 
     @classmethod
     def exec(cls, child):
-        res = cls.Mytypesymb_getasMytype(child[0])
+        res = cls.symb_getasMytype(child[0])
         if res.name == 'bool':
             if res.value:
                 print("true", end='')
@@ -710,6 +714,8 @@ class Getchar(Instruction):
         index = cls.symb_getvalue(child[2])
         string = cls.symb_getvalue(child[1])
         try:
+            if index < 0:
+                raise IndexError()
             cls.var_set(child[0], 'string', string[index])
         except:
             error.exit("out of bounds index!", error.Err_codes.invalid_string_operation.value)
@@ -742,7 +748,7 @@ class Setchar(Instruction):
         except:
             error.exit("empty string!", error.Err_codes.invalid_string_operation.value)
         string = cls.symb_getvalue(child[0])
-        if index > len(string) - 1:
+        if index > len(string) - 1 or index < 0:
             error.exit("out of bounds index!", error.Err_codes.invalid_string_operation.value)
         string = string[:index] + char + string[index + 1:]
         cls.var_set(child[0], 'string', string)
@@ -763,7 +769,7 @@ class Type(Instruction):
 
     @classmethod
     def exec(cls, child):
-        type_name = cls.Mytypesymb_getasMytype(child[1]).name
+        type_name = cls.symb_getasMytype(child[1]).name
         if type_name is None:
             cls.var_set(child[0], 'string', "")
         else:
@@ -803,7 +809,7 @@ class Jumpifeq(Instruction):
 
     @classmethod
     def exec(cls, child):
-        if cls.Mytypesymb_getasMytype(child[1]) == cls.Mytypesymb_getasMytype(child[2]):
+        if cls.symb_getasMytype(child[1]) == cls.symb_getasMytype(child[2]):
             return cls.labels[child[0].text]
 
 
@@ -812,7 +818,7 @@ class Jumpifneq(Jumpifeq):
 
     @classmethod
     def exec(cls, child):
-        if cls.Mytypesymb_getasMytype(child[1]) != cls.Mytypesymb_getasMytype(child[2]):
+        if cls.symb_getasMytype(child[1]).__ne__(cls.symb_getasMytype(child[2])):
             return cls.labels[child[0].text]
 
 

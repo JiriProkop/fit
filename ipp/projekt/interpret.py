@@ -110,7 +110,7 @@ instruction_switch = {
     'TYPE': instr.Type,
     'JUMP': instr.Jump,
     'JUMPIFEQ': instr.Jumpifeq,
-    'JUMPIFNEQ': instr.Jumpifeq,
+    'JUMPIFNEQ': instr.Jumpifneq,
     'EXIT': instr.Exit,
     'DPRINT': instr.Dprint,
     'BREAK': instr.Break,
@@ -131,7 +131,7 @@ for child in root:
     else:
         orders.append(order)
     # sorts the args by it's number
-    
+
     try:
         child[:] = sorted(child, key=lambda arg: int(arg.tag[3:]))
         # check arg tag numbers
@@ -146,7 +146,9 @@ for child in root:
                 raise SyntaxError()
     except:
         error.exit("invalid argument tag!", error.Err_codes.xml_bad_structure.value)
-
+    # strip arg.text of white characters
+    for arg in child:
+        arg.text = arg.text.strip()
     try:
         instruction_switch[child.attrib["opcode"].upper()]
     except:
@@ -167,7 +169,6 @@ while i <= max_index:
     if current_inst == 'LABEL':
         i += 1
         continue
-
     instruction_switch[current_inst].check_structure(root[i])
     instruction_switch[current_inst].check_sem(root[i])
     jump = instruction_switch[current_inst].exec(root[i])

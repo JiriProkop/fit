@@ -16,6 +16,7 @@ ifj
 ipk
 ids/ids-projekt/
 ipp/projekt/ipp-2023-tests
+ipp/projekt/supplementary-tests
 
 # Images
 *.png
