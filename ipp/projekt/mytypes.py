@@ -49,7 +49,7 @@ class Mytype:
         self.name = name
         self.value = value
 
-    def is_type(self, type):
+    def has_type(self, type):
         return self.name == type
 
     def __eq__(self, other):

@@ -126,9 +126,9 @@ class Instruction:
         if cls.arg_isnot_const(symb):
             parts = symb.text.split('@')
             if parts[0] == 'LF':
-                ok = cls.frames['LF'][-1][parts[1]].is_type(type)
+                ok = cls.frames['LF'][-1][parts[1]].has_type(type)
             else:
-                ok = cls.frames[parts[0]][parts[1]].is_type(type)
+                ok = cls.frames[parts[0]][parts[1]].has_type(type)
         else:
             ok = symb.attrib["type"] == type
         if not ok:
