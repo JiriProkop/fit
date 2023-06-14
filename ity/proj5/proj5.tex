@@ -1,0 +1,207 @@
+\documentclass{beamer}
+\usepackage{tikz}
+\usetheme{Madrid}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usecolortheme{default}
+
+\renewcommand{\algorithmiccomment}[1]{\hfill\# \textit{#1}}
+\algnotext{EndFor}
+\algnotext{EndProcedure}
+\algnotext{EndIf}
+\algnotext{EndWhile}
+\setbeamertemplate{footline}{%
+  \hfill\insertframenumber/\inserttotalframenumber\hspace{0.5cm}\vspace{0.1cm}%
+}
+\setbeamertemplate{itemize item}[circle]
+\setbeamertemplate{itemize subitem}[circle]
+\setbeamercolor{itemize subitem}{fg=red}
+
+
+\title{Jarníkův algoritmus}
+\author{Jiří Prokop}
+\institute{VUT FIT}
+\date{2023}
+
+\begin{document}
+
+\frame{\titlepage}
+
+\begin{frame}{Obsah}
+    \tableofcontents
+\end{frame}
+
+\section{Motivace}
+\begin{frame}
+\frametitle{Problém}
+\begin{itemize}
+    \item Hledáme minimální kostru váženého neorientovaného grafu.
+    \item minimální: nejmenší možná
+    \item Co je kostra?
+    \begin{quotation}
+Kostrou grafu budeme rozumět libovolný podgraf, který hranami spojuje všechny vrcholy původního grafu a zároveň sám neobsahuje žádnou kružnici(jde o strom).
+    \end{quotation}
+    \item vážený: přechody mají cenu přechodu/váhu
+    \item neorientovaný: přechody jde 'projít' oběma směry
+  \end{itemize}
+    \begin{figure}
+        \includegraphics[width=0.4\textwidth]{Minimum_spanning_tree.svg.png}
+        \caption{Minimalni kostra grafu}
+    \end{figure}
+\end{frame}
+
+\section{Jarníkův algoritmus}
+\begin{frame}{Jarníkův algoritmus}
+    \begin{itemize}
+        \item Ve světě znám jako \emph{Prim's alg.}
+        \item Objeven Vojtěchem Jarníkem v roce 1930.
+        \item Znovuobjeven v roce 1957 R. C. Primem a v roce 1959 E. W. Dijkstrou.
+        \item Využívá tzv.'greedy' přístup - postupně přidává nejlevnější hrany.
+        \item Složitost algoritmu závisí na použité datové struktuře.
+    \end{itemize}
+\end{frame}
+
+\subsection{pseudokód}
+\begin{frame}{Jarníkův algoritmus - pseudokód}
+    \begin{figure}
+        \begin{algorithmic}[0]
+            \Procedure{prim}{graf}
+            \State mst = prázdná množina 
+            \Comment{pro držení vrcholů minimálním kostry} 
+
+            \State startVertex = vrchol grafu
+            \State mst.add(startVertex)
+            \State hrany = hrany vrcholu startVertex
+    
+            \While{$mst.vertex.count < graf.vertex.count$}
+                % \Comment{najdi minimální hranu v sadě hran}
+                \State minEdge, minWeight = najítMinEdge(hrany)
+                
+                \State mst.add(minEdge)
+                  
+                \For{hrana in hrany spojené k minEdge}
+                 % \Comment{přidej hrany připojené k vrcholu do sady hran}
+                    \If{hrana is not in mst}
+                        \State hrany.add(hrana)
+                    \EndIf
+                \EndFor
+    
+                \\ \Comment{Odstraňte minimální hranu ze sady hran, které chcete zvážit}
+                \State hrany.remove(minEdge)
+            \EndWhile
+    
+            \Return mst jako array
+            \EndProcedure
+        \end{algorithmic}
+    \end{figure}
+\end{frame}
+
+\subsection{složitost}
+\begin{frame}{Jarníkův algoritmus - složitost}
+\framesubtitle{implementace pomocí haldy}
+    \begin{itemize}
+        \item časová složitost: \\
+            $O(E \log V)$
+            \begin{itemize}
+                \item $E$ - počet hran 
+                \item $V$ - počet vrcholů grafu
+            \end{itemize}
+        \item prostorová složitost: \\
+            $O(V + E)$
+            \begin{itemize}
+                \item $O(V)$ pro držení minimální kostry
+                \item $O(E)$ pro haldu
+            \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{Jarníkův algoritmus - složitost}
+\framesubtitle{implementace pomocí tzv. Fibonacciho haldy}
+    Je asymptoticky rychlejší, pokud je graf dostatečně hustý, takže platí, že $E$ je $\Omega(V)$.
+    \begin{itemize}
+        \item časová složitost: \\
+            $O(E + V \log V)$
+            \begin{itemize}
+                \item $E$ - počet hran 
+                \item $V$ - počet vrcholů grafu
+            \end{itemize}
+        \item prostorová složitost: \\
+            $O(V + E)$ (stejná)
+    \end{itemize}
+\end{frame}
+
+\subsection{algoritmus - příklad}
+\begin{frame}{Jarníkův algoritmus - algoritmus}
+Ukázka alg. na tomto grafu:
+    \begin{figure}
+        \centering
+        \includegraphics[width=\textwidth]{Minimum-Spanning-tree-example-1.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Jarníkův algoritmus - algoritmus}
+První iterace - začínáme ve vrcholu 2
+    \begin{figure}
+        \centering
+        \includegraphics[width=\textwidth]{Minimum-Spanning-tree-example-2.png}
+    \end{figure}
+\end{frame}
+
+\begin{frame}{Jarníkův algoritmus - algoritmus}
+Druhá a třetí iterace
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.75\textwidth]{Minimum-Spanning-tree-example-3.png}
+    \end{figure}
+
+    \begin{figure}
+        \centering
+        \includegraphics[width=0.75\textwidth]{Minimum-Spanning-tree-example-4.png}
+    \end{figure}
+\end{frame}
+
+% \begin{frame}{Jarníkův algoritmus - algoritmus}
+%  iterace
+%     \begin{figure}
+%         \centering
+%         \includegraphics[width=0.5\textwidth]{Minimum-Spanning-tree-example-4.png}
+%     \end{figure}
+
+%     \begin{figure}
+%         \centering
+%         \includegraphics[width=0.5\textwidth]{Minimum-Spanning-tree-example-5.png}
+%     \end{figure}
+
+%     \begin{figure}
+%         \centering
+%         \includegraphics[width=0.5\textwidth]{Minimum-Spanning-tree-example-7.png}
+%     \end{figure}
+% \end{frame}
+
+\begin{frame}{Jarníkův algoritmus - algoritmus}
+    \begin{columns}
+    \hspace{0.2cm}
+        \begin{column}{0.5\textwidth}
+            4. iterace
+            \begin{figure}
+                \includegraphics[width=\textwidth]{Minimum-Spanning-tree-example-4.png}
+            \end{figure}
+            5. iterace
+            \begin{figure}
+                \includegraphics[width=\textwidth]{Minimum-Spanning-tree-example-5.png}
+            \end{figure}
+        \end{column}
+        \begin{column}{0.6\textwidth}
+            \hspace{1.2cm} výsledná minimální kostra
+            \begin{figure}
+                \raggedleft
+                \includegraphics[width=\textwidth]{Minimum-Spanning-tree-example-7.png}
+            \end{figure}
+        \end{column}
+    \end{columns}
+\end{frame}
+
+
+\end{document}
+
+
