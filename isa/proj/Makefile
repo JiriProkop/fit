@@ -1,8 +1,9 @@
 SERVER = tftp-server
 CLIENT = tftp-client
 
-CC = gcc
-CFLAGS = -Wall -std=c11
+# CC = gcc
+CXX = g++
+CFLAGS = -Wall -Wextra -std=c11
 LDLIBS =
 
 SRCS = $(wildcard *.c)
