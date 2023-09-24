@@ -13,14 +13,15 @@
 #include "codes.h"
 
 #define IP_PROTOCOL 0
+#define MAX_PORT_NUM 65535
 
 typedef struct {
-    long port_num; // 0 to 65536
+    long port_num;
     char *root_path;
 } args_t;
 
 args_t args = {.root_path = NULL, .port_num = 0};
-int client_socket;
+int server_socket;
 bool close_socket = false;
 
 /*
@@ -31,7 +32,7 @@ bool close_socket = false;
 void free_and_exit(bool failure) {
     free(args.root_path);
     if (close_socket) {
-        close(client_socket);
+        close(server_socket);
     }
 
     if (failure) {
@@ -41,7 +42,6 @@ void free_and_exit(bool failure) {
     }
 }
 
-// tftp-server [-p port] root_dirpath
 void parse_args(int argc, char *argv[]) {
     if (argc == 2) { // TODO --help or -h
         args.root_path = malloc(strlen(argv[1] + 1));
@@ -53,9 +53,12 @@ void parse_args(int argc, char *argv[]) {
     } else if (argc == 4) {
         if (!strcmp(argv[1], "-p")) {
             char *check;
-            args.port_num = strtoul(argv[1], &check, 10);
-            if (args.port_num < 0) {
-                printf("Invalid socket number! (must be > 0)\n");
+            args.port_num = strtoul(argv[2], &check, 10);
+            if (args.port_num < 0 || args.port_num > MAX_PORT_NUM) {
+                printf("Invalid socket number! (must be between 0 and %d)\n", MAX_PORT_NUM + 1);
+                exit(EXIT_FAILURE);
+            } else if (args.port_num == 0) {
+                printf("Invalid socket arg value! (must be integer > 0 - 0 is default)\n");
                 exit(EXIT_FAILURE);
             }
 
@@ -77,7 +80,7 @@ void parse_args(int argc, char *argv[]) {
     DIR *dir = opendir(args.root_path);
     if (dir) {
         closedir(dir); // Directory exists.
-    } else if (ENOENT == errno) {
+    } else if (errno == ENOENT) {
         // Directory does not exist.
         printf("Dir %s does not exist! \n", args.root_path);
         free_and_exit(true);
@@ -103,18 +106,15 @@ void logic() {
     addr_con.sin_addr.s_addr = INADDR_ANY;
     // FILE *fp;
 
-    // socket()
-    client_socket = socket(AF_INET, SOCK_DGRAM, IP_PROTOCOL);
-
-    if (client_socket < 0) {
+    server_socket = socket(AF_INET, SOCK_DGRAM, IP_PROTOCOL);
+    if (server_socket < 0) {
         printf("Socket creation error!\n");
         free_and_exit(true);
     }
 
-    if (bind(client_socket, (struct sockaddr *)&addr_con, sizeof(addr_con)) < 0) {
+    if (bind(server_socket, (struct sockaddr *)&addr_con, sizeof(addr_con)) < 0) {
         printf("Socket binding failed!\n");
         free_and_exit(true);
-
     } else {
         close_socket = true;
     }
@@ -131,7 +131,7 @@ int main(int argc, char *argv[]) {
     signal(SIGINT, sig_handler);
 
     logic();
-    // end
+
     free_and_exit(false);
     return 0;
 }
