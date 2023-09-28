@@ -99,11 +99,10 @@ void sig_handler(int _) {
 
 void logic() {
     // int nBytes;
-    struct sockaddr_in addr_con;
-    // int addrlen = sizeof(addr_con);
-    addr_con.sin_family = AF_INET;
-    addr_con.sin_port = htons(args.port_num);
-    addr_con.sin_addr.s_addr = INADDR_ANY;
+    struct sockaddr_in server_addres;
+    server_addres.sin_family = AF_INET;
+    server_addres.sin_port = htons(args.port_num);
+    server_addres.sin_addr.s_addr = INADDR_ANY;
     // FILE *fp;
 
     server_socket = socket(AF_INET, SOCK_DGRAM, IP_PROTOCOL);
@@ -112,7 +111,7 @@ void logic() {
         free_and_exit(true);
     }
 
-    if (bind(server_socket, (struct sockaddr *)&addr_con, sizeof(addr_con)) < 0) {
+    if (bind(server_socket, (struct sockaddr *)&server_addres, sizeof(server_addres)) < 0) {
         printf("Socket binding failed!\n");
         free_and_exit(true);
     } else {
@@ -120,8 +119,19 @@ void logic() {
     }
 
     printf("\nWaiting for stuff to happen...\n");
+    int bytesrx;
+    char buf[120];
+    struct sockaddr_in client_address;
+    socklen_t clientlen = sizeof(client_address);
+     
     while (1) {
-        ;
+        /* prijeti odpovedi a jeji vypsani */
+        bytesrx = recvfrom(server_socket, buf, 120, 0, (struct sockaddr *)&client_address, &clientlen);
+        if (bytesrx < 0) {
+            printf("Recvfrom error! \n");
+            free_and_exit(true);
+        }
+        printf("Msg: %s \n", buf);
     }
 }
 

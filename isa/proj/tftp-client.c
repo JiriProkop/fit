@@ -125,12 +125,11 @@ void parse_args(int argc, char *argv[]) {
 void logic() {
     // int nBytes;
     struct sockaddr_in server_address;
-    // int addrlen = sizeof(server_address);
+    int addrlen = sizeof(server_address);
     server_address.sin_addr.s_addr = INADDR_ANY;
     struct hostent *server;
     // FILE *fp;
 
-    
     /*
         The next few lines of code were taken from: https://git.fit.vutbr.cz/NESFIT/IPK-Projekty/src/branch/master/Stubs/cpp/DemoUdp/client.c
         Author: Ondrej Rysavy (rysavy@fit.vutbr.cz)
@@ -146,14 +145,19 @@ void logic() {
     printf("INFO: Server socket: %s : %d \n", inet_ntoa(server_address.sin_addr), ntohs(server_address.sin_port));
     // end of taken code
 
-
     client_socket = socket(AF_INET, SOCK_DGRAM, IP_PROTOCOL);
     if (client_socket < 0) {
         printf("Socket creation error!\n");
         free_and_exit(true);
     }
 
-   
+    /* odeslani zpravy na server */
+    char buf[] = "Hello server!";
+    int bytestx = sendto(client_socket, buf, strlen(buf), 0, (struct sockaddr *)&server_address, addrlen);
+    if (bytestx < 0) {
+        printf("Sendto error! \n");
+        free_and_exit(true);
+    }
 }
 
 int main(int argc, char *argv[]) {
