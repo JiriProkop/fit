@@ -24,7 +24,7 @@ typedef struct {
     char *hostname;
     char *file_path;
     char *dest_file_path;
-    long port; // FIXME sjednotit nazev se serverem
+    long port;
 } args_t;
 
 args_t args = {.hostname = NULL, .file_path = NULL, .dest_file_path = NULL, .port = 0};
@@ -66,7 +66,7 @@ void parse_args(int argc, char *argv[]) {
     while ((opt = getopt(argc, argv, "h:p:f:t:")) != -1) {
         switch (opt) {
             case 'h':
-                args.hostname = malloc(strlen(optarg + 1));
+                args.hostname = malloc(strlen(optarg) + 1);
                 if (args.hostname == NULL) {
                     printf("Memory allocation error! \n");
                     free_and_exit(true);
@@ -85,7 +85,7 @@ void parse_args(int argc, char *argv[]) {
                 }
                 break;
             case 'f':
-                args.file_path = malloc(strlen(optarg + 1));
+                args.file_path = malloc(strlen(optarg) + 1);
                 if (args.file_path == NULL) {
                     printf("Memory allocation error! \n");
                     free_and_exit(true);
@@ -93,7 +93,7 @@ void parse_args(int argc, char *argv[]) {
                 strcpy(args.file_path, optarg);
                 break;
             case 't':
-                args.dest_file_path = malloc(strlen(optarg + 1));
+                args.dest_file_path = malloc(strlen(optarg) + 1);
                 if (args.dest_file_path == NULL) {
                     printf("Memory allocation error! \n");
                     free_and_exit(true);

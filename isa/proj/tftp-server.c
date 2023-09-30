@@ -8,19 +8,21 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include "codes.h"
 
 #define IP_PROTOCOL 0
 #define MAX_PORT_NUM 65535
+#define TFTP_DEFAULT_SERVER_PORT 69
 
 typedef struct {
-    long port_num;
+    long port;
     char *root_path;
 } args_t;
 
-args_t args = {.root_path = NULL, .port_num = 0};
+args_t args = {.root_path = NULL, .port = TFTP_DEFAULT_SERVER_PORT};
 int server_socket;
 bool close_socket = false;
 
@@ -44,7 +46,7 @@ void free_and_exit(bool failure) {
 
 void parse_args(int argc, char *argv[]) {
     if (argc == 2) { // TODO --help or -h
-        args.root_path = malloc(strlen(argv[1] + 1));
+        args.root_path = malloc(strlen(argv[1]) + 1);
         if (args.root_path == NULL) {
             printf("Memory allocation error!\n");
             exit(EXIT_FAILURE);
@@ -53,16 +55,16 @@ void parse_args(int argc, char *argv[]) {
     } else if (argc == 4) {
         if (!strcmp(argv[1], "-p")) {
             char *check;
-            args.port_num = strtoul(argv[2], &check, 10);
-            if (args.port_num < 0 || args.port_num > MAX_PORT_NUM) {
+            args.port = strtoul(argv[2], &check, 10);
+            if (args.port < 0 || args.port > MAX_PORT_NUM) {
                 printf("Invalid socket number! (must be between 0 and %d)\n", MAX_PORT_NUM + 1);
                 exit(EXIT_FAILURE);
-            } else if (args.port_num == 0) {
+            } else if (args.port == 0) {
                 printf("Invalid socket arg value! (must be integer > 0 - 0 is default)\n");
                 exit(EXIT_FAILURE);
             }
 
-            args.root_path = malloc(strlen(argv[3] + 1));
+            args.root_path = malloc(strlen(argv[3]) + 1);
             if (args.root_path == NULL) {
                 printf("Memory allocation error!\n");
                 exit(EXIT_FAILURE);
@@ -97,13 +99,21 @@ void sig_handler(int _) {
     free_and_exit(false);
 }
 
-void logic() {
-    // int nBytes;
+void read() {
+
+    exit(EXIT_SUCCESS);
+}
+
+void write() {
+
+    exit(EXIT_SUCCESS);
+}
+
+void main_loop() {
     struct sockaddr_in server_addres;
     server_addres.sin_family = AF_INET;
-    server_addres.sin_port = htons(args.port_num);
+    server_addres.sin_port = htons(args.port);
     server_addres.sin_addr.s_addr = INADDR_ANY;
-    // FILE *fp;
 
     server_socket = socket(AF_INET, SOCK_DGRAM, IP_PROTOCOL);
     if (server_socket < 0) {
@@ -123,24 +133,38 @@ void logic() {
     char buf[120];
     struct sockaddr_in client_address;
     socklen_t clientlen = sizeof(client_address);
-     
+
     while (1) {
-        /* prijeti odpovedi a jeji vypsani */
+        // recvfrom blocks until msg is received or error encountered
         bytesrx = recvfrom(server_socket, buf, 120, 0, (struct sockaddr *)&client_address, &clientlen);
         if (bytesrx < 0) {
             printf("Recvfrom error! \n");
             free_and_exit(true);
         }
         printf("Msg: %s \n", buf);
+
+        pid_t pid = fork();
+        if (pid == -1) {
+            printf("Fork error! \n");
+            free_and_exit(true);
+        } else if (pid == 0) {
+            // child
+            read();
+            write();
+        }
+        // terminate any hanging zombie process but don't wait
+        waitpid(-1, NULL, WNOHANG);
+        // In case there's a lot of traffic. At least(later on) more is closed than created.
+        waitpid(-1, NULL, WNOHANG);
     }
 }
 
 int main(int argc, char *argv[]) {
     parse_args(argc, argv);
-    printf("path: %s, port %lu \n", args.root_path, args.port_num);
+    printf("path: %s, port %lu \n", args.root_path, args.port);
     signal(SIGINT, sig_handler);
 
-    logic();
+    main_loop();
 
     free_and_exit(false);
     return 0;
