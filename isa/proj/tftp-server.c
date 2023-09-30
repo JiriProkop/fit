@@ -16,6 +16,7 @@
 #define IP_PROTOCOL 0
 #define MAX_PORT_NUM 65535
 #define TFTP_DEFAULT_SERVER_PORT 69
+#define TFTP_DEFAULT_BLOCK_SIZE 512 //FIXME this is true just for the data blocks, initial request can be longer
 
 typedef struct {
     long port;
@@ -99,12 +100,36 @@ void sig_handler(int _) {
     free_and_exit(false);
 }
 
-void read() {
+void print_info(struct sockaddr_in adress){
+    (void)adress;
+}
+
+void tftp_read(struct sockaddr_in client_address, char msg[]) {
+    /* TODO always check source port num(has to be the same) An error packet
+   should be sent to the source of the incorrect packet, while not
+   disturbing the transfer.  This can be done only if the TFTP in fact
+   receives a packet with an incorrect TID.  If the supporting protocols
+   do not allow it, this particular error condition will not arise.     */
+    /*
+        2 bytes     string    1 byte     string   1 byte
+        ------------------------------------------------
+       | Opcode |  Filename  |   0  |    Mode    |   0  |
+        ------------------------------------------------
+
+    also, more on modes: https://stackoverflow.com/questions/7101068/tftp-protocol-implementation-and-difference-between-netascii-and-octect
+    but how i understand it: binary(raw) - don't change anything
+                             netascii - before sending, do the bellow thing and also revert it when receiving
+                                        change a new line to 'CR LF' and a single carriage return to 'CR NUL'
+    */
+    
 
     exit(EXIT_SUCCESS);
 }
 
-void write() {
+void tftp_write(struct sockaddr_in client_address, char msg[]) {
+    // if file access is ok: send ACK with block num 0
+    // TODO always check source port num(has to be the same)
+
 
     exit(EXIT_SUCCESS);
 }
@@ -130,27 +155,33 @@ void main_loop() {
 
     printf("\nWaiting for stuff to happen...\n");
     int bytesrx;
-    char buf[120];
+    char buf[TFTP_DEFAULT_BLOCK_SIZE];
     struct sockaddr_in client_address;
     socklen_t clientlen = sizeof(client_address);
 
     while (1) {
         // recvfrom blocks until msg is received or error encountered
-        bytesrx = recvfrom(server_socket, buf, 120, 0, (struct sockaddr *)&client_address, &clientlen);
+        bytesrx = recvfrom(server_socket, buf, TFTP_DEFAULT_BLOCK_SIZE, 0, (struct sockaddr *)&client_address, &clientlen);
         if (bytesrx < 0) {
             printf("Recvfrom error! \n");
             free_and_exit(true);
         }
         printf("Msg: %s \n", buf);
-
+        // get the op code value
+        char opcode[2] = {buf[0], buf[1]};
+        // unsigned code = ntons() or some similar shit;
         pid_t pid = fork();
         if (pid == -1) {
             printf("Fork error! \n");
             free_and_exit(true);
-        } else if (pid == 0) {
-            // child
-            read();
-            write();
+        } else if (pid == 0) { // child
+            if (buf[1] == read_req){
+                tftp_read(client_address, buf);
+            } else if(buf[1] == write_req){
+                tftp_write(client_address, buf);
+            } else {
+                // FIXME error ig
+            }
         }
         // terminate any hanging zombie process but don't wait
         waitpid(-1, NULL, WNOHANG);
