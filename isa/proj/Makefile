@@ -4,15 +4,17 @@ CLIENT = tftp-client
 CC = gcc
 CFLAGS = -Wall -Wextra -std=c11
 LDLIBS =
+DEPS = codes.c codes.h
 
 
 .PHONY: clean all
 
 all: $(SERVER) $(CLIENT)
 
-$(SERVER):
+$(SERVER): $(DEPS)
 
-$(CLIENT):
+$(CLIENT): $(DEPS)
+
 
 clean:
 	rm -f $(SERVER) $(CLIENT)
