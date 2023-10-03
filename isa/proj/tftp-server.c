@@ -4,6 +4,7 @@
 #include <netinet/in.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,7 +17,7 @@
 #define IP_PROTOCOL 0
 #define MAX_PORT_NUM 65535
 #define TFTP_DEFAULT_SERVER_PORT 69
-#define TFTP_DEFAULT_BLOCK_SIZE 512 //FIXME this is true just for the data blocks, initial request can be longer
+#define TFTP_DEFAULT_BLOCK_SIZE 512 // FIXME this is true just for the data blocks, initial request can be longer
 
 typedef struct {
     long port;
@@ -61,7 +62,7 @@ void parse_args(int argc, char *argv[]) {
                 printf("Invalid socket number! (must be between 0 and %d)\n", MAX_PORT_NUM + 1);
                 exit(EXIT_FAILURE);
             } else if (args.port == 0) {
-                printf("Invalid socket arg value! (must be integer > 0 - 0 is default)\n");
+                printf("Invalid socket arg value! (must be integer > 0)\n");
                 exit(EXIT_FAILURE);
             }
 
@@ -100,7 +101,7 @@ void sig_handler(int _) {
     free_and_exit(false);
 }
 
-void print_info(struct sockaddr_in adress){
+void print_info(struct sockaddr_in adress) {
     (void)adress;
 }
 
@@ -110,6 +111,7 @@ void tftp_read(struct sockaddr_in client_address, char msg[]) {
    disturbing the transfer.  This can be done only if the TFTP in fact
    receives a packet with an incorrect TID.  If the supporting protocols
    do not allow it, this particular error condition will not arise.     */
+
     /*
         2 bytes     string    1 byte     string   1 byte
         ------------------------------------------------
@@ -121,7 +123,6 @@ void tftp_read(struct sockaddr_in client_address, char msg[]) {
                              netascii - before sending, do the bellow thing and also revert it when receiving
                                         change a new line to 'CR LF' and a single carriage return to 'CR NUL'
     */
-    
 
     exit(EXIT_SUCCESS);
 }
@@ -129,7 +130,6 @@ void tftp_read(struct sockaddr_in client_address, char msg[]) {
 void tftp_write(struct sockaddr_in client_address, char msg[]) {
     // if file access is ok: send ACK with block num 0
     // TODO always check source port num(has to be the same)
-
 
     exit(EXIT_SUCCESS);
 }
@@ -168,16 +168,15 @@ void main_loop() {
         }
         printf("Msg: %s \n", buf);
         // get the op code value
-        char opcode[2] = {buf[0], buf[1]};
         // unsigned code = ntons() or some similar shit;
         pid_t pid = fork();
         if (pid == -1) {
             printf("Fork error! \n");
             free_and_exit(true);
         } else if (pid == 0) { // child
-            if (buf[1] == read_req){
+            if (buf[1] == read_req_opcode) {
                 tftp_read(client_address, buf);
-            } else if(buf[1] == write_req){
+            } else if (buf[1] == read_req_opcode) {
                 tftp_write(client_address, buf);
             } else {
                 // FIXME error ig
@@ -192,7 +191,6 @@ void main_loop() {
 
 int main(int argc, char *argv[]) {
     parse_args(argc, argv);
-    printf("path: %s, port %lu \n", args.root_path, args.port);
     signal(SIGINT, sig_handler);
 
     main_loop();
