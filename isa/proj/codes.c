@@ -27,7 +27,7 @@
 #define A_Pop \
     _Pragma("GCC diagnostic pop")
 
-uint16_t char_to_short(char buf[2]) {
+uint16_t opcode_from_chars(char buf[2]) {
     union {
         char ch[2];
         uint16_t n;
@@ -102,6 +102,40 @@ int send_request(uint16_t op_code, char *filename, char *mode, struct sockaddr_i
     unsigned check = sprintf(msg, "%c%c%s%c%s", op[0], op[1], filename, '\0', mode);
     assert(check == buff_size); // FIXME remove before submiting
     return sendto(socket, msg, buff_size, 0, (struct sockaddr *)&address, sizeof(address));
+}
+
+/*
+    @param num mode or block number
+*/
+void print_info(struct sockaddr_in adress, uint16_t opcode, uint16_t num, char* filepath) {
+    // get source ip
+    // get src port
+    
+    switch(opcode){
+        case read_req_opcode:
+            fprintf(stderr, "RRQ\n");
+            // RRQ {SRC_IP}:{SRC_PORT} "{FILEPATH}" {MODE} {$OPTS}
+            break;
+        case write_req_opcode:
+            // WRQ {SRC_IP}:{SRC_PORT} "{FILEPATH}" {MODE} {$OPTS}
+            fprintf(stderr, "WRQ\n");
+            break;
+        case ack_opcode:
+            // ACK {SRC_IP}:{SRC_PORT} {BLOCK_ID}
+            fprintf(stderr, "OACK\n");
+            break;
+        case data_opcode:
+            fprintf(stderr, "DATA\n");
+            break;
+        case error_opcode:
+            fprintf(stderr, "ERROR\n");
+            break;
+        default:
+            printf("Should never be here, something is terribly wrong!\n");
+            break;
+    }
+    
+    (void)adress;
 }
 
 // int main() {

@@ -22,4 +22,14 @@ typedef enum {
     no_such_user,
 } packet_err_codes;
 
+uint16_t opcode_from_chars(char buf[2]);
+
+int send_ack(uint16_t block_num, struct sockaddr_in address, int socket);
+
+int send_error(uint16_t err_code, char *err_msg, struct sockaddr_in address, int socket);
+
+int send_data(uint16_t block_num, char *data, unsigned data_len, struct sockaddr_in address, int socket);
+
+int send_request(uint16_t op_code, char *filename, char *mode, struct sockaddr_in address, int socket);
+
 #endif

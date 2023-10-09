@@ -101,9 +101,6 @@ void sig_handler(int _) {
     free_and_exit(false);
 }
 
-void print_info(struct sockaddr_in adress) {
-    (void)adress;
-}
 
 void tftp_read(struct sockaddr_in client_address, char msg[]) {
     /* TODO always check source port num(has to be the same) An error packet
@@ -155,6 +152,7 @@ void main_loop() {
 
     printf("\nWaiting for stuff to happen...\n");
     int bytesrx;
+    // FIXME 1st packet can be bigger than this, so you should check the size
     char buf[TFTP_DEFAULT_BLOCK_SIZE];
     struct sockaddr_in client_address;
     socklen_t clientlen = sizeof(client_address);
@@ -166,20 +164,22 @@ void main_loop() {
             printf("Recvfrom error! \n");
             free_and_exit(true);
         }
-        printf("Msg: %s \n", buf);
-        // get the op code value
-        // unsigned code = ntons() or some similar shit;
+
+        uint16_t code = opcode_from_chars(buf);
+        code = ntohs(code);
+
         pid_t pid = fork();
         if (pid == -1) {
             printf("Fork error! \n");
             free_and_exit(true);
         } else if (pid == 0) { // child
-            if (buf[1] == read_req_opcode) {
+            if (code == read_req_opcode) {
                 tftp_read(client_address, buf);
-            } else if (buf[1] == read_req_opcode) {
+            } else if (code == write_req_opcode) {
                 tftp_write(client_address, buf);
             } else {
-                // FIXME error ig
+                printf("Received packet has unknown opcode! \n");
+                exit(EXIT_FAILURE);
             }
         }
         // terminate any hanging zombie process but don't wait
