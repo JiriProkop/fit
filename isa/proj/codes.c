@@ -107,11 +107,11 @@ int send_request(uint16_t op_code, char *filename, char *mode, struct sockaddr_i
 /*
     @param num mode or block number
 */
-void print_info(struct sockaddr_in adress, uint16_t opcode, uint16_t num, char* filepath) {
+void print_info(struct sockaddr_in adress, uint16_t opcode, uint16_t num, char *filepath) {
     // get source ip
     // get src port
-    
-    switch(opcode){
+
+    switch (opcode) {
         case read_req_opcode:
             fprintf(stderr, "RRQ\n");
             // RRQ {SRC_IP}:{SRC_PORT} "{FILEPATH}" {MODE} {$OPTS}
@@ -134,8 +134,60 @@ void print_info(struct sockaddr_in adress, uint16_t opcode, uint16_t num, char* 
             printf("Should never be here, something is terribly wrong!\n");
             break;
     }
-    
+
     (void)adress;
+}
+/*
+    Converts text from ascii to mode. In text_len is returned the new size
+*/
+char *text_to_mode(int mode, char *text, size_t *text_len) {
+    if (mode == octet_mode) {
+        return text;
+    }
+    char *tmp = malloc(*text_len);
+    if (tmp == NULL) {
+        printf("Malloc error! \n");
+        return NULL;
+    }
+    // change each LF to CR LF
+    int added_count = 0;
+    for (int i = 0; i < *text_len; i++) {
+        tmp[i + added_count] = text[i];
+        if (text[i] == '\n' || text[i] == '\r') {
+            tmp[i + added_count] = '\r';
+            char *tmp_real = realloc(tmp, text_len + ++added_count);
+            if (tmp_real == NULL) {
+                printf("Malloc error! \n");
+                return NULL;
+            }
+            tmp[i + added_count] = text[i] == '\n' ? '\n' : '\0';
+        }
+    }
+    // while this if isn't technicaly needed, it returns the original string if there
+    //  was no need to change it, which will reduce damage caused by this fn's error/s
+    if (added_count == 0) {
+        free(tmp);
+        return text;
+    } else {
+        free(text);
+        *text_len = *text_len + added_count;
+        return tmp;
+    }
+}
+
+/*
+    Change NETASCII to ASCII if needed.
+*/
+void text_from_mode(int mode, char *text, size_t text_len) {
+    if (mode == octet_mode) {
+        return text;
+    }
+    // change CR LF to LF
+    for (int i = 0; i < text_len; i++) {
+        if (text[i] == '\r' && text[i + 1] == '\n') {
+            text[i] = '\0';
+        }
+    }
 }
 
 // int main() {

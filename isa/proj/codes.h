@@ -22,6 +22,11 @@ typedef enum {
     no_such_user,
 } packet_err_codes;
 
+typedef enum {
+    netascii_mode,
+    octet_mode,
+}
+
 uint16_t opcode_from_chars(char buf[2]);
 
 int send_ack(uint16_t block_num, struct sockaddr_in address, int socket);
