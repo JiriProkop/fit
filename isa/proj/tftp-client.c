@@ -151,9 +151,21 @@ void logic() {
         free_and_exit(true);
     }
 
+    uint16_t o = htons((uint16_t)read_req_opcode);
+    char *op = short_to_char(&o);
     /* odeslani zpravy na server */
-    char buf[] = "Hello server!";
-    int bytestx = sendto(client_socket, buf, strlen(buf), 0, (struct sockaddr *)&server_address, addrlen);
+    char buf[50];
+    buf[0] = op[0];
+    buf[1] = op[1];
+    buf[2] = 'x';
+    buf[3] = '\0';
+    buf[4] = 'o';
+    buf[5] = 'c';
+    buf[6] = 't';
+    buf[7] = 'e';
+    buf[8] = 't';
+    buf[9] = '\0';
+    int bytestx = sendto(client_socket, buf, 50, 0, (struct sockaddr *)&server_address, addrlen);
     if (bytestx < 0) {
         printf("Sendto error! \n");
         free_and_exit(true);
