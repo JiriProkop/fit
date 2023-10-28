@@ -10,7 +10,7 @@
 #define SOCK_TIMEOUT 1
 
 typedef enum {
-    read_req_opcode = 1, // FIXME add _opcode or smth to the end
+    read_req_opcode = 1,
     write_req_opcode,
     data_opcode,
     ack_opcode,
@@ -48,5 +48,7 @@ int send_data(uint16_t block_num, char *data, unsigned data_len, struct sockaddr
 int send_request(uint16_t op_code, char *filename, char *mode, struct sockaddr_in address, int socket);
 
 bool parse_req_packet(char *two_buf, char *filename, char *mode_str, char *msg, size_t msg_size);
+
+void text_from_mode(int mode, char *text, size_t text_len);
 
 #endif

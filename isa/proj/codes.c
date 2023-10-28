@@ -85,12 +85,16 @@ int send_data(uint16_t block_num, char *data, unsigned data_len, struct sockaddr
 
     // read or just give data, not decided yet
     unsigned buff_size = data_len + sizeof(op_code) + sizeof(block_num);
-
     char msg[buff_size];
-
-    unsigned check = sprintf(msg, "%c%c%c%c%s", op[0], op[1], block[0], block[1], data);
- 
-    assert(check == buff_size); // FIXME remove before submiting
+    msg[0] = op[0];
+    msg[1] = op[1];
+    msg[2] = block[0];
+    msg[3] = block[1];
+    size_t i;
+    for (i = 4; i < data_len + 4; i++) {
+        msg[i] = data[i - 4];
+    }
+    assert(i == buff_size); // FIXME remove before submiting
     return sendto(socket, msg, buff_size, 0, (struct sockaddr *)&address, sizeof(address));
 }
 
@@ -202,6 +206,7 @@ void text_from_mode(int mode, char *text, size_t text_len) {
     }
 }
 
+// TODO add support for options
 bool parse_req_packet(char *two_buf, char *filename, char *mode_str, char *msg, size_t msg_size) {
     if (msg_size < 4) {
         printf("Wrong packet format! \n");
@@ -229,15 +234,3 @@ bool parse_req_packet(char *two_buf, char *filename, char *mode_str, char *msg, 
     }
     return true;
 }
-
-// int main() {
-//     uint16_t op_code = 1024;
-//     uint16_t block_num = 1;
-
-//     char *op = short_to_char(&op_code);
-//     char *block = short_to_char(&block_num);
-
-//     printf("%d %d - %d %d \n", op[0], op[1], block[0], block[1]);
-
-//     return 0;
-// }
