@@ -10,16 +10,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
-#include <sys/time.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 #include "codes.h"
-
-#define IP_PROTOCOL 0
-#define MAX_PORT_NUM 65535
-#define TFTP_DEFAULT_SERVER_PORT 69
-#define TFTP_DEFAULT_DATA_SIZE 512 // FIXME this is true just for the data blocks, initial request can be longer
 
 typedef struct {
     long port;
@@ -102,57 +96,6 @@ void sig_handler(int _) {
     (void)_;
     printf("\nSIGINT received, clearing allocations.\n");
     free_and_exit(false);
-}
-
-/*
-    buf is expected to be already allocated to n size
-
-    @return returns number of read chars
-*/
-size_t get_nchars_from_file(FILE *fp, size_t n, char *buf, int mode) {
-    static int c = 0;
-    size_t i = 0;
-    // put left over letter from last reading
-    if (mode == octet_mode) {
-        if (c == '\n') {
-            buf[i++] = c;
-        } else if (c == '\r') {
-            buf[i++] = '\0';
-        }
-    }
-    for (; i < n; i++) {
-        c = fgetc(fp);
-        if (mode == octet_mode && (c == '\r' || c == '\n')) {
-            buf[i] = '\r';
-            if (++i == n) {
-                return i;
-            }
-            if (c == '\r') {
-                c = '\0';
-            }
-        }
-        if (c == EOF) {
-            return i;
-        }
-        buf[i] = c;
-    }
-    return i;
-}
-
-int create_socket_for_process() {
-    int process_socket = socket(AF_INET, SOCK_DGRAM, IP_PROTOCOL);
-    if (process_socket < 0) {
-        printf("Socket creation error!\n");
-        return process_socket;
-    }
-    struct timeval tv;
-    tv.tv_sec = SOCK_TIMEOUT;
-    tv.tv_usec = 0;
-    if (setsockopt(process_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
-        printf("Error setting timeout! \n");
-        return -1; // TODO this should return something else than socket error, because here, err packet can be sent
-    }
-    return process_socket;
 }
 
 void tftp_read(struct sockaddr_in client_address, int mode, const char file_path[]) {
@@ -296,7 +239,7 @@ void tftp_write(struct sockaddr_in client_address, int mode, const char file_pat
                     }
                     to_break = data_size < TFTP_DEFAULT_DATA_SIZE;
 
-                    printf("reading file... \n");
+                    printf("writing file... \n");
                     text_from_mode(mode, buf + 4, data_size); // convert from netascii to normalascii
                     // write
                     for (size_t j = 0; j < data_size; j++) {

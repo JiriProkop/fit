@@ -4,10 +4,16 @@
 #include <netinet/in.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #define ACK_PACKET_SIZE 4
 #define RETRY_SENT_COUNT 3
 #define SOCK_TIMEOUT 1
+
+#define IP_PROTOCOL 0
+#define MAX_PORT_NUM 65535
+#define TFTP_DEFAULT_SERVER_PORT 69
+#define TFTP_DEFAULT_DATA_SIZE 512 // FIXME this is true just for the data blocks, initial request can be longer
 
 typedef enum {
     read_req_opcode = 1,
@@ -50,5 +56,9 @@ int send_request(uint16_t op_code, char *filename, char *mode, struct sockaddr_i
 bool parse_req_packet(char *two_buf, char *filename, char *mode_str, char *msg, size_t msg_size);
 
 void text_from_mode(int mode, char *text, size_t text_len);
+
+int create_socket_for_process();
+
+size_t get_nchars_from_file(FILE *fp, size_t n, char *buf, int mode);
 
 #endif

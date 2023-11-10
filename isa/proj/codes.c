@@ -14,6 +14,7 @@
 #include <string.h>
 #include <strings.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -233,4 +234,55 @@ bool parse_req_packet(char *two_buf, char *filename, char *mode_str, char *msg, 
         }
     }
     return true;
+}
+
+int create_socket_for_process() {
+    int process_socket = socket(AF_INET, SOCK_DGRAM, IP_PROTOCOL);
+    if (process_socket < 0) {
+        printf("Socket creation error!\n");
+        return process_socket;
+    }
+    struct timeval tv;
+    tv.tv_sec = SOCK_TIMEOUT;
+    tv.tv_usec = 0;
+    if (setsockopt(process_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+        printf("Error setting timeout! \n");
+        return -1; // TODO this should return something else than socket error, because here, err packet can be sent
+    }
+    return process_socket;
+}
+
+/*
+    buf is expected to be already allocated to n size
+
+    @return returns number of read chars
+*/
+size_t get_nchars_from_file(FILE *fp, size_t n, char *buf, int mode) {
+    static int c = 0;
+    size_t i = 0;
+    // put left over letter from last reading
+    if (mode == octet_mode) {
+        if (c == '\n') {
+            buf[i++] = c;
+        } else if (c == '\r') {
+            buf[i++] = '\0';
+        }
+    }
+    for (; i < n; i++) {
+        c = fgetc(fp);
+        if (mode == octet_mode && (c == '\r' || c == '\n')) {
+            buf[i] = '\r';
+            if (++i == n) {
+                return i;
+            }
+            if (c == '\r') {
+                c = '\0';
+            }
+        }
+        if (c == EOF) {
+            return i;
+        }
+        buf[i] = c;
+    }
+    return i;
 }

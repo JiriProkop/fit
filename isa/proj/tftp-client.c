@@ -22,15 +22,17 @@
 
 typedef struct {
     char *hostname;
-    char *file_path;
-    char *dest_file_path;
+    char *to_transfer_file_path; // path to file on server(download) or nothing(upload, stdin is used)
+    char *future_file_path;      // path where the file will be saved
     long port;
 } args_t;
 
-args_t args = {.hostname = NULL, .file_path = NULL, .dest_file_path = NULL, .port = 0};
+args_t args = {.hostname = NULL, .to_transfer_file_path = NULL, .future_file_path = NULL, .port = TFTP_DEFAULT_SERVER_PORT};
 
 int client_socket;
 bool close_socket = false;
+u_int16_t mode = octet_mode;
+// FIXME this is a 1proccess client, so every exit must have a free_and_exit called
 
 /*
     Free allocated resources and exit.
@@ -39,8 +41,8 @@ bool close_socket = false;
 */
 void free_and_exit(bool failure) {
     free(args.hostname);
-    free(args.file_path);
-    free(args.dest_file_path);
+    free(args.to_transfer_file_path);
+    free(args.future_file_path);
 
     if (close_socket) {
         close(client_socket);
@@ -78,27 +80,27 @@ void parse_args(int argc, char *argv[]) {
                 args.port = strtoul(optarg, &check, 10);
                 if (args.port < 0 || args.port > MAX_PORT_NUM) {
                     printf("Invalid socket number!(must be between 0 and %d)\n", MAX_PORT_NUM + 1);
-                    exit(EXIT_FAILURE);
+                    free_and_exit(true);
                 } else if (args.port == 0) {
                     printf("Invalid socket arg value! (must be integer > 0)\n");
-                    exit(EXIT_FAILURE);
+                    free_and_exit(true);
                 }
                 break;
             case 'f':
-                args.file_path = malloc(strlen(optarg) + 1);
-                if (args.file_path == NULL) {
+                args.to_transfer_file_path = malloc(strlen(optarg) + 1);
+                if (args.to_transfer_file_path == NULL) {
                     printf("Memory allocation error! \n");
                     free_and_exit(true);
                 }
-                strcpy(args.file_path, optarg);
+                strcpy(args.to_transfer_file_path, optarg);
                 break;
             case 't':
-                args.dest_file_path = malloc(strlen(optarg) + 1);
-                if (args.dest_file_path == NULL) {
+                args.future_file_path = malloc(strlen(optarg) + 1);
+                if (args.future_file_path == NULL) {
                     printf("Memory allocation error! \n");
                     free_and_exit(true);
                 }
-                strcpy(args.dest_file_path, optarg);
+                strcpy(args.future_file_path, optarg);
                 break;
             case '?':
                 if (optopt == 'h' || optopt == 'p' || optopt == 'f' || optopt == 't')
@@ -114,22 +116,180 @@ void parse_args(int argc, char *argv[]) {
                 free_and_exit(true);
         }
     }
-    if (args.hostname == NULL || args.dest_file_path == NULL) {
-        printf("%s, %s \n", args.hostname, args.dest_file_path);
+    if (args.hostname == NULL || args.future_file_path == NULL) {
+        printf("%s, %s \n", args.hostname, args.future_file_path);
         printf("-h and -t arguments are required! \n");
-        // TODO show help
+        free_and_exit(true);
+    } else if (args.future_file_path != NULL && access(args.future_file_path, F_OK) == 0) {
+        printf("File '%s' already exists \n", args.future_file_path);
         free_and_exit(true);
     }
 }
 
+void read_req(struct sockaddr_in server_address, int socket) {
+    char buf[TFTP_DEFAULT_DATA_SIZE + 4]; // without extensions
+    FILE *fp = fopen(args.future_file_path, "w");
+    if (fp == NULL) {
+        printf("Couldn't create the file! (probably insufficient privileges) %d \n", errno);
+        free_and_exit(true);
+    }
+    int bytestx;
+    socklen_t addr_len = sizeof(server_address);
+    bool to_break = false;
+    int prev_client_port;
+    struct in_addr prev_ip = server_address.sin_addr;
+    uint16_t block_num = 1;
+    bool first_packet = true;
+
+    while (1) {
+    sending_packet_write:
+        for (int i = 0; i < RETRY_SENT_COUNT; i++) {
+            if (first_packet) {
+                if (send_request(read_req_opcode, args.to_transfer_file_path, "octet", server_address, socket) < 0) {
+                    printf("Sendto error! \n");
+                    free_and_exit(true);
+                }
+            } else {
+                if (send_ack(block_num, server_address, socket) < 0) {
+                    printf("Sendto error! \n");
+                    continue;
+                }
+                if (to_break) {
+                    goto end_loop_write;
+                }
+            }
+
+            bytestx = recvfrom(socket, buf, TFTP_DEFAULT_DATA_SIZE + 4, 0, (struct sockaddr *)&server_address, &addr_len);
+            if (bytestx < 0) {
+                printf("Recvfrom error or timeout! \n");
+                continue;
+            }
+            if (server_address.sin_addr.s_addr != prev_ip.s_addr || (!first_packet && server_address.sin_port != prev_client_port)) {
+                send_error(unknown_tid, "Unknown sender address or TID! \r\n", server_address, socket);
+                server_address.sin_addr = prev_ip;
+                server_address.sin_port = prev_client_port;
+                continue;
+            }
+            size_t data_size = bytestx - 4;
+            uint16_t code = short16_from_chars(buf);
+            code = ntohs(code);
+            switch (code) {
+                case error_opcode:
+                    fclose(fp);
+                    free_and_exit(true);
+                    break;
+                case data_opcode:
+                    if (block_num != ntohs(short16_from_chars(buf + 2))) {
+                        continue;
+                    }
+                    if (first_packet) {
+                        first_packet = false;
+                        prev_client_port = server_address.sin_port;
+                    }
+                    to_break = data_size < TFTP_DEFAULT_DATA_SIZE;
+
+                    printf("writing file... \n");
+                    text_from_mode(octet_mode, buf + 4, data_size); // convert from netascii to normalascii
+                    // write
+                    for (size_t j = 0; j < data_size; j++) {
+                        fputc(buf[4 + j], fp);
+                    }
+                    block_num++;
+                    goto sending_packet_write;
+                default:
+                    printf("Received packet has unknown opcode! \n");
+                    fclose(fp);
+                    free_and_exit(true);
+            }
+        }
+    }
+end_loop_write:
+    fclose(fp);
+    free_and_exit(false);
+}
+
+void write_req(struct sockaddr_in server_address, int socket) {
+    char buf[TFTP_DEFAULT_DATA_SIZE + 4]; // FIXME this is probably true only without extensions
+
+    FILE *fp = stdin;
+
+    int bytestx;
+    socklen_t addr_len = sizeof(server_address);
+    bool to_break = false;
+    int prev_client_port;
+    struct in_addr prev_ip = server_address.sin_addr;
+    uint16_t block_num = 0;
+    bool first_packet = true;
+
+    while (1) {
+    sending_packet_read:
+        size_t data_size = get_nchars_from_file(fp, TFTP_DEFAULT_DATA_SIZE, buf, mode);
+        printf("sending data of size: %ld \n", data_size);
+        to_break = data_size < TFTP_DEFAULT_DATA_SIZE;
+        for (int i = 0; i < RETRY_SENT_COUNT; i++) {
+            if (first_packet) {
+                if (send_request(write_req_opcode, args.future_file_path, "octet", server_address, socket) < 0) {
+                    printf("Sendto error! \n");
+                    free_and_exit(true);
+                }
+            } else {
+                bytestx = send_data(block_num, buf, data_size, server_address, socket);
+                if (bytestx < 0) {
+                    printf("Sendto error! \n");
+                    continue;
+                }
+            }
+            // wait for ack
+            bytestx = recvfrom(socket, buf, TFTP_DEFAULT_DATA_SIZE + 4, 0, (struct sockaddr *)&server_address, &addr_len);
+            if (bytestx < 0) {
+                printf("Recvfrom error or timeout! \n");
+                continue;
+            }
+            if (server_address.sin_addr.s_addr != prev_ip.s_addr || (!first_packet && server_address.sin_port != prev_client_port)) {
+                send_error(unknown_tid, "Unknown sender address or TID! \r\n", server_address, socket);
+                server_address.sin_addr = prev_ip;
+                server_address.sin_port = prev_client_port;
+                continue;
+            }
+            // check ack, print info
+            uint16_t code = short16_from_chars(buf);
+            code = ntohs(code);
+            switch (code) {
+                case error_opcode:
+                    free_and_exit(true);
+                    break;
+                case ack_opcode:
+                    if (block_num != ntohs(short16_from_chars(buf + 2))) {
+                        continue;
+                    } else {
+                        if (first_packet) {
+                            first_packet = false;
+                            prev_client_port = server_address.sin_port;
+                        }
+                        if (to_break) {
+                            goto end_loop_read; // this was the last packet, we can leave
+                        }
+                        block_num++;
+                        goto sending_packet_read;
+                    }
+                    break;
+                default:
+                    printf("Received packet has unknown opcode! \n");
+                    free_and_exit(true);
+            }
+        }
+        // didnt get ack for the RETRY_SENT_COUNTth time -> quiting
+        send_error(not_defined, "Timed out! \r\n", server_address, socket);
+        free_and_exit(true);
+    }
+end_loop_read:
+    free_and_exit(false);
+}
+
 void logic() {
-    // int nBytes;
     struct sockaddr_in server_address;
-    int addrlen = sizeof(server_address);
     server_address.sin_addr.s_addr = INADDR_ANY;
     struct hostent *server;
-    // FILE *fp;
-
     /*
         The next few lines of code were taken from: https://git.fit.vutbr.cz/NESFIT/IPK-Projekty/src/branch/master/Stubs/cpp/DemoUdp/client.c
         Author: Ondrej Rysavy (rysavy@fit.vutbr.cz)
@@ -143,32 +303,20 @@ void logic() {
     bcopy((char *)server->h_addr_list[0], (char *)&server_address.sin_addr.s_addr, server->h_length);
     server_address.sin_port = htons(args.port);
     printf("INFO: Server socket: %s : %d \n", inet_ntoa(server_address.sin_addr), ntohs(server_address.sin_port));
-    // end of taken code
+    /*
+        end of taken code
+    */
 
-    client_socket = socket(AF_INET, SOCK_DGRAM, IP_PROTOCOL);
+    client_socket = create_socket_for_process();
     if (client_socket < 0) {
         printf("Socket creation error!\n");
         free_and_exit(true);
     }
 
-    uint16_t o = htons((uint16_t)read_req_opcode);
-    char *op = short_to_char(&o);
-    /* odeslani zpravy na server */
-    char buf[50];
-    buf[0] = op[0];
-    buf[1] = op[1];
-    buf[2] = 'x';
-    buf[3] = '\0';
-    buf[4] = 'o';
-    buf[5] = 'c';
-    buf[6] = 't';
-    buf[7] = 'e';
-    buf[8] = 't';
-    buf[9] = '\0';
-    int bytestx = sendto(client_socket, buf, 50, 0, (struct sockaddr *)&server_address, addrlen);
-    if (bytestx < 0) {
-        printf("Sendto error! \n");
-        free_and_exit(true);
+    if (args.to_transfer_file_path == NULL) {
+        write_req(server_address, client_socket);
+    } else {
+        read_req(server_address, client_socket);
     }
 }
 
