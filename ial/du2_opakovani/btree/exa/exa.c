@@ -9,7 +9,6 @@
  */
 
 #include "../btree.h"
-#include "../test_util.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -76,7 +75,15 @@ void insert_nodes(bst_node_t **tree, bst_items_t *items, int start, int end) {
  * Pro implementaci si můžete v tomto souboru nadefinovat vlastní pomocné funkce. Není nutné, aby funkce fungovala *in situ* (in-place).
  */
 void bst_balance(bst_node_t **tree) {
-    bst_items_t *items = bst_init_items();
+    bst_items_t *items = malloc(sizeof(bst_items_t));
+    if(items == NULL){
+        fprintf(stderr, "Malloc chyba! \n");
+        return;
+    }
+    items->capacity = 0;
+    items->size = 0;
+    items->nodes = NULL;
+
     bst_inorder(*tree, items);
 
     bst_node_t *new_tree;
