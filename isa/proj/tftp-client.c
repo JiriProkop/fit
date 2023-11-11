@@ -307,7 +307,7 @@ void logic() {
         end of taken code
     */
 
-    client_socket = create_socket_for_process();
+    client_socket = create_socket_for_process(0);
     if (client_socket < 0) {
         printf("Socket creation error!\n");
         free_and_exit(true);

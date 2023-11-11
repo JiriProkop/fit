@@ -100,7 +100,7 @@ void sig_handler(int _) {
 void tftp_read(struct sockaddr_in client_address, int mode, const char file_path[], tftp_options_t options) {
     size_t max_data_size = options.blksize ? options.blksize_val : TFTP_DEFAULT_DATA_SIZE;
     char buf[max_data_size + 4];
-    int process_socket = create_socket_for_process();
+    int process_socket = create_socket_for_process(options.timeout_val);
     if (process_socket < 0) {
         send_error(not_defined, "Socket creation failed! \r\n", client_address, server_socket);
         exit(EXIT_FAILURE);
@@ -186,7 +186,7 @@ end_loop_read:
 void tftp_write(struct sockaddr_in client_address, int mode, const char file_path[], tftp_options_t options) {
     size_t max_data_size = options.blksize ? options.blksize_val : TFTP_DEFAULT_DATA_SIZE;
     char buf[max_data_size + 4];
-    int process_socket = create_socket_for_process();
+    int process_socket = create_socket_for_process(options.timeout_val);
     if (process_socket < 0) {
         send_error(not_defined, "Socket creation error! \r\n", client_address, server_socket);
         close(process_socket);
@@ -320,9 +320,12 @@ void main_loop() {
         char file_path[4096]; // max unix path len
         strcpy(file_path, args.root_path);
         char two_buf[2];
-
-        if (!parse_req_packet(two_buf, file_path + strlen(args.root_path), mode_str, buf, bytesrx, &options)) {
+        int res = parse_req_packet(two_buf, file_path + strlen(args.root_path), mode_str, buf, bytesrx, &options);
+        if (res == 1) {
             send_error(illegal_operation, "Wrong request format! \r\n", client_address, server_socket);
+            continue;
+        } else if(res == 2){
+            send_error(option_negotiation_error, "Option error - probably option value error! \r\n", client_address, server_socket);
             continue;
         }
 

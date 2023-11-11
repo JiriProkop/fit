@@ -33,6 +33,7 @@ typedef enum {
     unknown_tid,
     file_already_exists,
     no_such_user,
+    option_negotiation_error,
 } packet_err_codes;
 
 typedef enum {
@@ -43,7 +44,11 @@ typedef enum {
 typedef struct {
     bool blksize;
     size_t blksize_val;
-} tftp_options_t;
+    bool timeout;
+    size_t timeout_val;
+    bool tsize;
+    size_t tsize_val;
+} tftp_options_t; //TODO bool values are basicly useless
 
 uint16_t short16_from_chars(char *buf);
 
@@ -59,11 +64,11 @@ int send_data(uint16_t block_num, char *data, unsigned data_len, struct sockaddr
 
 int send_request(uint16_t op_code, char *filename, char *mode, struct sockaddr_in address, int socket);
 
-bool parse_req_packet(char *two_buf, char *filename, char *mode_str, char *msg, size_t msg_size, tftp_options_t *options);
+int parse_req_packet(char *two_buf, char *filename, char *mode_str, char *msg, size_t msg_size, tftp_options_t *options);
 
 void text_from_mode(int mode, char *text, size_t text_len);
 
-int create_socket_for_process();
+int create_socket_for_process(unsigned timeout);
 
 size_t get_nchars_from_file(FILE *fp, size_t n, char *buf, int mode);
 

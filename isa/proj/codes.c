@@ -214,25 +214,41 @@ typedef enum {
     read_option_value,
 } state_enum;
 
-bool parse_req_packet(char *two_buf, char *filename, char *mode_str, char *msg, size_t msg_size, tftp_options_t *options) {
+typedef enum {
+    none,
+    blksize,
+    timeout,
+    tsize,
+} value_for_enum;
+
+void init_options(tftp_options_t *options) {
+    options->blksize = false;
+    options->blksize_val = 0;
+    options->timeout = false;
+    options->timeout_val = 0;
+    options->tsize = false;
+    options->tsize_val = 0;
+}
+
+int parse_req_packet(char *two_buf, char *filename, char *mode_str, char *msg, size_t msg_size, tftp_options_t *options) {
     if (msg_size < 4) {
         printf("Wrong packet format! \n");
-        return false;
+        return 1;
     }
     two_buf[0] = msg[0];
     two_buf[1] = msg[1];
 
-    options->blksize = false;
-    options->blksize_val = 0;
+    init_options(options);
     int temp_buf_size = 32;
     char temp[temp_buf_size];
     int temp_i = 0;
     int state = read_file_name;
+    int value_for = none;
     size_t i;
     for (i = 2; i < msg_size; i++) {
         if (temp_i >= temp_buf_size) {
             printf("Option name or value too long(bigger than %d chars)! \n", temp_buf_size);
-            return false;
+            return 2;
         }
         switch (state) {
             case read_file_name:
@@ -257,6 +273,13 @@ bool parse_req_packet(char *two_buf, char *filename, char *mode_str, char *msg, 
                     temp_i = 0;
                     if (strcmp(temp, "blksize") == 0) {
                         options->blksize = true;
+                        value_for = blksize;
+                    } else if (strcmp(temp, "timeout") == 0) {
+                        value_for = timeout;
+                        options->timeout = true;
+                    } else if (strcmp(temp, "tsize") == 0) {
+                        value_for = tsize;
+                        options->tsize = true;
                     }
                     state = read_option_value;
                 }
@@ -265,17 +288,33 @@ bool parse_req_packet(char *two_buf, char *filename, char *mode_str, char *msg, 
             case read_option_value:
                 if (msg[i] == '\0') {
                     temp_i = 0;
-                    options->blksize_val = atoi(temp);
-                    if (!(options->blksize_val >= 8 && options->blksize_val <= 65464)) {
-                        printf("Invalid blocksize option value!! \n");
-                        return false;
+                    if (value_for == timeout) {
+                        options->timeout_val = atoi(temp);
+                        if (!(options->timeout_val >= 1 && options->timeout_val <= 255)) {
+                            printf("Invalid timeout option value!! \n");
+                            return 2;
+                        }
+                    } else if (value_for == blksize) {
+                        options->blksize_val = atoi(temp);
+                        if (!(options->blksize_val >= 8)) {
+                            printf("Invalid blocksize option value!! \n");
+                            return 2;
+                        } else if (options->blksize_val > 65464) {
+                            options->blksize_val = 65464;
+                        }
+                    } else if (value_for == tsize) {
+                        options->tsize_val = atoi(temp);
+                        if (!(options->tsize_val = 0)) {
+                            printf("Invalid tsize option value!! \n");
+                            return 2;
+                        }
                     }
                     state = read_option;
                 } else if (isdigit(msg[i])) {
                     temp[temp_i++] = msg[i];
                 } else {
-                    printf("Invalid blocksize option value!! \n");
-                    return false;
+                    printf("Invalid option value!! \n");
+                    return 2;
                 }
                 break;
         }
@@ -283,20 +322,21 @@ bool parse_req_packet(char *two_buf, char *filename, char *mode_str, char *msg, 
 
     if (msg[i - 1] != '\0') {
         printf("Wrong packet format! \n");
-        return false;
+        return 1;
     }
-    return true;
+    return 0;
 }
 
-int create_socket_for_process() {
+int create_socket_for_process(unsigned timeout) {
     int process_socket = socket(AF_INET, SOCK_DGRAM, IP_PROTOCOL);
     if (process_socket < 0) {
         printf("Socket creation error!\n");
         return process_socket;
     }
     struct timeval tv;
-    tv.tv_sec = SOCK_TIMEOUT;
+    tv.tv_sec = timeout ? timeout : SOCK_TIMEOUT;
     tv.tv_usec = 0;
+
     if (setsockopt(process_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
         printf("Error setting timeout! \n");
         return -1; // TODO this should return something else than socket error, because here, err packet can be sent
