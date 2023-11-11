@@ -207,31 +207,83 @@ void text_from_mode(int mode, char *text, size_t text_len) {
     }
 }
 
-// TODO add support for options
-bool parse_req_packet(char *two_buf, char *filename, char *mode_str, char *msg, size_t msg_size) {
+typedef enum {
+    read_file_name,
+    read_mode,
+    read_option,
+    read_option_value,
+} state_enum;
+
+bool parse_req_packet(char *two_buf, char *filename, char *mode_str, char *msg, size_t msg_size, tftp_options_t *options) {
     if (msg_size < 4) {
         printf("Wrong packet format! \n");
         return false;
     }
-
     two_buf[0] = msg[0];
     two_buf[1] = msg[1];
-    bool read_first_string = true;
-    for (size_t i = 2; i < msg_size; i++) {
-        if (read_first_string) {
-            filename[0] = msg[i];
-            filename++;
-            if (msg[i] == '\0') {
-                read_first_string = false;
-            }
-        } else {
-            mode_str[0] = msg[i];
-            mode_str++;
-            if (msg[i] == '\0' && i + 1 != msg_size) {
-                printf("Wrong packet format! \n");
-                return false;
-            }
+
+    options->blksize = false;
+    options->blksize_val = 0;
+    int temp_buf_size = 32;
+    char temp[temp_buf_size];
+    int temp_i = 0;
+    int state = read_file_name;
+    size_t i;
+    for (i = 2; i < msg_size; i++) {
+        if (temp_i >= temp_buf_size) {
+            printf("Option name or value too long(bigger than %d chars)! \n", temp_buf_size);
+            return false;
         }
+        switch (state) {
+            case read_file_name:
+                filename[temp_i++] = msg[i];
+                if (msg[i] == '\0') {
+                    temp_i = 0;
+                    state = read_mode;
+                }
+                break;
+
+            case read_mode:
+                mode_str[temp_i++] = tolower(msg[i]);
+                if (msg[i] == '\0') {
+                    temp_i = 0;
+                    state = read_option;
+                }
+                break;
+
+            case read_option:
+                temp[temp_i++] = tolower(msg[i]);
+                if (msg[i] == '\0') {
+                    temp_i = 0;
+                    if (strcmp(temp, "blksize") == 0) {
+                        options->blksize = true;
+                    }
+                    state = read_option_value;
+                }
+                break;
+
+            case read_option_value:
+                if (msg[i] == '\0') {
+                    temp_i = 0;
+                    options->blksize_val = atoi(temp);
+                    if (!(options->blksize_val >= 8 && options->blksize_val <= 65464)) {
+                        printf("Invalid blocksize option value!! \n");
+                        return false;
+                    }
+                    state = read_option;
+                } else if (isdigit(msg[i])) {
+                    temp[temp_i++] = msg[i];
+                } else {
+                    printf("Invalid blocksize option value!! \n");
+                    return false;
+                }
+                break;
+        }
+    }
+
+    if (msg[i - 1] != '\0') {
+        printf("Wrong packet format! \n");
+        return false;
     }
     return true;
 }

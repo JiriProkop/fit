@@ -21,6 +21,7 @@ typedef enum {
     data_opcode,
     ack_opcode,
     error_opcode,
+    oack_opcode,
 } packet_opcodes;
 
 typedef enum {
@@ -39,6 +40,11 @@ typedef enum {
     octet_mode,
 } modes;
 
+typedef struct {
+    bool blksize;
+    size_t blksize_val;
+} tftp_options_t;
+
 uint16_t short16_from_chars(char *buf);
 
 inline char *short_to_char(uint16_t *short16) {
@@ -53,7 +59,7 @@ int send_data(uint16_t block_num, char *data, unsigned data_len, struct sockaddr
 
 int send_request(uint16_t op_code, char *filename, char *mode, struct sockaddr_in address, int socket);
 
-bool parse_req_packet(char *two_buf, char *filename, char *mode_str, char *msg, size_t msg_size);
+bool parse_req_packet(char *two_buf, char *filename, char *mode_str, char *msg, size_t msg_size, tftp_options_t *options);
 
 void text_from_mode(int mode, char *text, size_t text_len);
 

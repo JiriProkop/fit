@@ -29,7 +29,6 @@ bool close_socket = false;
 
     @param failure true for EXIT_FAILURE return code, EXIT_SUCCESS otherwise
 */
-// BUG need to return proper fail codes, defined in codes.h
 void free_and_exit(bool failure) {
     free(args.root_path);
     if (close_socket) {
@@ -98,8 +97,9 @@ void sig_handler(int _) {
     free_and_exit(false);
 }
 
-void tftp_read(struct sockaddr_in client_address, int mode, const char file_path[]) {
-    char buf[TFTP_DEFAULT_DATA_SIZE + 4]; // FIXME this is probably true only without extensions
+void tftp_read(struct sockaddr_in client_address, int mode, const char file_path[], tftp_options_t options) {
+    size_t max_data_size = options.blksize ? options.blksize_val : TFTP_DEFAULT_DATA_SIZE;
+    char buf[max_data_size + 4];
     int process_socket = create_socket_for_process();
     if (process_socket < 0) {
         send_error(not_defined, "Socket creation failed! \r\n", client_address, server_socket);
@@ -110,6 +110,7 @@ void tftp_read(struct sockaddr_in client_address, int mode, const char file_path
     if (fp == NULL) {
         printf("Couldn't read the file! (not present or insufficient privileges) %d \n", errno);
         send_error(file_not_found, "Couldn't read the file! (not present or insufficient privileges)! \r\n", client_address, process_socket);
+        close(process_socket);
         exit(EXIT_FAILURE);
     }
 
@@ -122,9 +123,9 @@ void tftp_read(struct sockaddr_in client_address, int mode, const char file_path
 
     while (1) {
     sending_data_packet_read:
-        size_t data_size = get_nchars_from_file(fp, TFTP_DEFAULT_DATA_SIZE, buf, mode);
+        size_t data_size = get_nchars_from_file(fp, max_data_size, buf, mode);
         printf("sending data of size: %ld \n", data_size);
-        to_break = data_size < TFTP_DEFAULT_DATA_SIZE;
+        to_break = data_size < max_data_size;
         for (int i = 0; i < RETRY_SENT_COUNT; i++) {
 
             bytestx = send_data(block_num, buf, data_size, client_address, process_socket);
@@ -133,7 +134,7 @@ void tftp_read(struct sockaddr_in client_address, int mode, const char file_path
                 continue;
             }
             // wait for ack
-            bytestx = recvfrom(process_socket, buf, TFTP_DEFAULT_DATA_SIZE + 4, 0, (struct sockaddr *)&client_address, &addr_len);
+            bytestx = recvfrom(process_socket, buf, max_data_size + 4, 0, (struct sockaddr *)&client_address, &addr_len);
             if (bytestx < 0) {
                 printf("Recvfrom error or timeout! \n");
                 continue;
@@ -149,6 +150,8 @@ void tftp_read(struct sockaddr_in client_address, int mode, const char file_path
             code = ntohs(code);
             switch (code) {
                 case error_opcode:
+                    close(process_socket);
+                    fclose(fp);
                     exit(EXIT_FAILURE);
                 case ack_opcode:
                     if (block_num != ntohs(short16_from_chars(buf + 2))) {
@@ -163,37 +166,44 @@ void tftp_read(struct sockaddr_in client_address, int mode, const char file_path
                 default:
                     printf("Received packet has unknown opcode! \n");
                     fclose(fp);
+                    close(process_socket);
                     exit(EXIT_FAILURE);
             }
         }
         // didnt get ack for the RETRY_SENT_COUNTth time -> quiting
         send_error(not_defined, "Timed out! \r\n", client_address, process_socket);
         fclose(fp);
+        close(process_socket);
         exit(EXIT_FAILURE);
     }
 end_loop_read:
     printf("READINF OF %s DONE \n", file_path);
     fclose(fp);
+    close(process_socket);
     exit(EXIT_SUCCESS);
 }
 
-void tftp_write(struct sockaddr_in client_address, int mode, const char file_path[]) {
-    char buf[TFTP_DEFAULT_DATA_SIZE + 4]; // FIXME this is probably true only without extensions
+void tftp_write(struct sockaddr_in client_address, int mode, const char file_path[], tftp_options_t options) {
+    size_t max_data_size = options.blksize ? options.blksize_val : TFTP_DEFAULT_DATA_SIZE;
+    char buf[max_data_size + 4];
     int process_socket = create_socket_for_process();
     if (process_socket < 0) {
         send_error(not_defined, "Socket creation error! \r\n", client_address, server_socket);
+        close(process_socket);
         exit(EXIT_FAILURE);
     }
 
     if (access(file_path, F_OK) == 0) {
         send_error(file_already_exists, "File already exists! \r\n", client_address, process_socket);
         printf("file already exists \n");
+        close(process_socket);
         exit(EXIT_FAILURE);
     }
     FILE *fp = fopen(file_path, "w");
     if (fp == NULL) {
         printf("Couldn't create the file! (probably insufficient privileges) %d \n", errno);
         send_error(access_violation, "Couldn't create the file! \r\n", client_address, process_socket);
+        close(process_socket);
         exit(EXIT_FAILURE);
     }
     int bytestx;
@@ -215,7 +225,7 @@ void tftp_write(struct sockaddr_in client_address, int mode, const char file_pat
                 goto end_loop_write;
             }
 
-            bytestx = recvfrom(process_socket, buf, TFTP_DEFAULT_DATA_SIZE + 4, 0, (struct sockaddr *)&client_address, &addr_len);
+            bytestx = recvfrom(process_socket, buf, max_data_size + 4, 0, (struct sockaddr *)&client_address, &addr_len);
             if (bytestx < 0) {
                 printf("Recvfrom error or timeout! \n");
                 continue;
@@ -232,12 +242,14 @@ void tftp_write(struct sockaddr_in client_address, int mode, const char file_pat
             code = ntohs(code);
             switch (code) {
                 case error_opcode:
+                    close(process_socket);
+                    fclose(fp);
                     exit(EXIT_FAILURE);
                 case data_opcode:
                     if (block_num + 1 != ntohs(short16_from_chars(buf + 2))) {
                         continue;
                     }
-                    to_break = data_size < TFTP_DEFAULT_DATA_SIZE;
+                    to_break = data_size < max_data_size;
 
                     printf("writing file... \n");
                     text_from_mode(mode, buf + 4, data_size); // convert from netascii to normalascii
@@ -250,17 +262,20 @@ void tftp_write(struct sockaddr_in client_address, int mode, const char file_pat
                 default:
                     printf("Received packet has unknown opcode! \n");
                     fclose(fp);
+                    close(process_socket);
                     exit(EXIT_FAILURE);
             }
         }
         // didnt get ack for the RETRY_SENT_COUNTth time -> quiting
         send_error(not_defined, "Timed out! \r\n", client_address, process_socket);
         fclose(fp);
+        close(process_socket);
         exit(EXIT_FAILURE);
     }
 end_loop_write:
     printf("WRITING OF %s DONE \n", file_path);
     fclose(fp);
+    close(process_socket);
     exit(EXIT_SUCCESS);
 }
 
@@ -285,15 +300,19 @@ void main_loop() {
 
     printf("Server is running...\n");
     int bytesrx;
-    // FIXME 1st packet can be bigger than this, so you should check the size
     char buf[TFTP_DEFAULT_DATA_SIZE];
     struct sockaddr_in client_address;
     socklen_t clientlen = sizeof(client_address);
+    tftp_options_t options;
 
     while (1) {
         bytesrx = recvfrom(server_socket, buf, TFTP_DEFAULT_DATA_SIZE, 0, (struct sockaddr *)&client_address, &clientlen);
         if (bytesrx < 0) {
             printf("Recvfrom error! \n");
+            continue;
+        } else if (bytesrx > TFTP_DEFAULT_DATA_SIZE) {
+            printf("Received REQ packet is bigger than the maximum defined in RFC2347!\n");
+            // TODO SEND ERR
             continue;
         }
         printf("some packet obtained \n");
@@ -302,12 +321,10 @@ void main_loop() {
         strcpy(file_path, args.root_path);
         char two_buf[2];
 
-        if (!parse_req_packet(two_buf, file_path + strlen(args.root_path), mode_str, buf, bytesrx)) {
+        if (!parse_req_packet(two_buf, file_path + strlen(args.root_path), mode_str, buf, bytesrx, &options)) {
             send_error(illegal_operation, "Wrong request format! \r\n", client_address, server_socket);
             continue;
         }
-        for (int i = 0; mode_str[i]; ++i)
-            mode_str[i] = tolower(mode_str[i]);
 
         uint16_t code = short16_from_chars(two_buf);
         code = ntohs(code);
@@ -329,10 +346,10 @@ void main_loop() {
         } else if (pid == 0) { // child
             if (code == read_req_opcode) {
                 printf("read req obtained \n");
-                tftp_read(client_address, mode, file_path);
+                tftp_read(client_address, mode, file_path, options);
             } else if (code == write_req_opcode) {
                 printf("write req obtained \n");
-                tftp_write(client_address, mode, file_path);
+                tftp_write(client_address, mode, file_path, options);
             } else {
                 printf("Received packet has unknown opcode! \n");
                 send_error(illegal_operation, "Wrong op code! \r\n", client_address, server_socket);

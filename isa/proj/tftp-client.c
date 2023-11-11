@@ -32,7 +32,6 @@ args_t args = {.hostname = NULL, .to_transfer_file_path = NULL, .future_file_pat
 int client_socket;
 bool close_socket = false;
 u_int16_t mode = octet_mode;
-// FIXME this is a 1proccess client, so every exit must have a free_and_exit called
 
 /*
     Free allocated resources and exit.
@@ -125,6 +124,7 @@ void parse_args(int argc, char *argv[]) {
         free_and_exit(true);
     }
 }
+// TODO send error packets when needed
 
 void read_req(struct sockaddr_in server_address, int socket) {
     char buf[TFTP_DEFAULT_DATA_SIZE + 4]; // without extensions
@@ -312,6 +312,7 @@ void logic() {
         printf("Socket creation error!\n");
         free_and_exit(true);
     }
+    close_socket = true;
 
     if (args.to_transfer_file_path == NULL) {
         write_req(server_address, client_socket);
