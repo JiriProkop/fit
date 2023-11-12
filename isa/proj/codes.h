@@ -10,6 +10,7 @@
 #define ACK_PACKET_SIZE 4
 #define RETRY_SENT_COUNT 3
 #define SOCK_TIMEOUT 5
+#define BLOCK_SIZE_MAX 65464
 
 #define IP_PROTOCOL 0
 #define MAX_PORT_NUM 65535
@@ -48,7 +49,7 @@ typedef struct {
     bool timeout;
     size_t timeout_val;
     bool tsize;
-    off_t tsize_val;
+    size_t tsize_val;
 } tftp_options_t; //TODO bool values are basicly useless
 
 uint16_t short16_from_chars(char *buf);

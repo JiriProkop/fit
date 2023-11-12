@@ -110,6 +110,47 @@ int send_request(uint16_t op_code, char *filename, char *mode, struct sockaddr_i
     return sendto(socket, msg, buff_size, 0, (struct sockaddr *)&address, sizeof(address));
 }
 
+/*
+    Including the '\0' 
+*/
+int get_char_size_of_num(size_t num) {
+    int i = 0;
+    for (; num != 0; i++){
+        num /= 10;
+    }
+    return i + 1;
+}
+
+size_t get_0ack_buff_size(tftp_options_t *options) {
+    size_t buff_size = 2;
+    if (options->blksize) {
+        buff_size += strlen("blksize") + 1;
+        buff_size += get_char_size_of_num(options->blksize_val);
+    }
+    if (options->timeout) {
+        buff_size += strlen("timeout") + 1;
+        buff_size += get_char_size_of_num(options->timeout_val);
+    }
+    if (options->tsize) {
+        buff_size += strlen("tsize") + 1;
+        buff_size += get_char_size_of_num(options->tsize_val);
+    }
+    return buff_size;
+}
+
+int send_0ack(struct sockaddr_in address, int socket, tftp_options_t *options) {
+    uint16_t op_code = htons((uint16_t)oack_opcode);
+    char *op = short_to_char(&op_code);
+    size_t buff_size = get_0ack_buff_size(options);
+
+    // gg just add the string and move the msg pointer :fiveHead:
+
+    char msg[buff_size];
+    unsigned check = sprintf(msg, "%c%c", op[0], op[1]);
+    assert(check == buff_size); // FIXME remove before submiting
+    return sendto(socket, msg, buff_size, 0, (struct sockaddr *)&address, sizeof(address));
+}
+
 char *get_mode_name(uint16_t mode) {
     if (mode == netascii_mode) {
         return "netascii";
@@ -309,8 +350,8 @@ int parse_req_packet(char *two_buf, char *filename, char *mode_str, char *msg, s
                         if (!(options->blksize_val >= 8)) {
                             printf("Invalid blocksize option value!! \n");
                             return 2;
-                        } else if (options->blksize_val > 65464) {
-                            options->blksize_val = 65464;
+                        } else if (options->blksize_val > BLOCK_SIZE_MAX) {
+                            options->blksize_val = BLOCK_SIZE_MAX;
                         }
                     } else if (value_for == tsize) {
                         options->tsize_val = atoi(temp);

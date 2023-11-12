@@ -99,10 +99,10 @@ void sig_handler(int _) {
     free_and_exit(false);
 }
 
-void set_tsize_value_ifset(FILE* fp, tftp_options_t* options) {
+void set_tsize_value_ifset(FILE *fp, tftp_options_t *options) {
     if (options->tsize) {
         struct stat st;
-        if(fstat(fp, &st) != 0) {
+        if (fstat(fp->_fileno, &st) != 0) {
             printf("Couldn't get file size! %d \n Going without tsize option. \n", errno);
             options->tsize = false;
         } else {
