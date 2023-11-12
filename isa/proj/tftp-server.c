@@ -10,6 +10,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -97,6 +99,18 @@ void sig_handler(int _) {
     free_and_exit(false);
 }
 
+void set_tsize_value_ifset(FILE* fp, tftp_options_t* options) {
+    if (options->tsize) {
+        struct stat st;
+        if(fstat(fp, &st) != 0) {
+            printf("Couldn't get file size! %d \n Going without tsize option. \n", errno);
+            options->tsize = false;
+        } else {
+            options->tsize_val = st.st_size;
+        }
+    }
+}
+
 void tftp_read(struct sockaddr_in client_address, int mode, const char file_path[], tftp_options_t options) {
     size_t max_data_size = options.blksize ? options.blksize_val : TFTP_DEFAULT_DATA_SIZE;
     char buf[max_data_size + 4];
@@ -113,6 +127,7 @@ void tftp_read(struct sockaddr_in client_address, int mode, const char file_path
         close(process_socket);
         exit(EXIT_FAILURE);
     }
+    set_tsize_value_ifset(fp, &options);
 
     int bytestx;
     socklen_t addr_len = sizeof(client_address);
@@ -324,7 +339,7 @@ void main_loop() {
         if (res == 1) {
             send_error(illegal_operation, "Wrong request format! \r\n", client_address, server_socket);
             continue;
-        } else if(res == 2){
+        } else if (res == 2) {
             send_error(option_negotiation_error, "Option error - probably option value error! \r\n", client_address, server_socket);
             continue;
         }

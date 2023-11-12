@@ -20,3 +20,7 @@ interakce a az potom uplne skonci.
 
 timeout je nastaven u recvfrom protoze je to tak nejjednodusi a resend se dela podle hodnoty v codes.h .
 Kdyz mi teda posle packet nekdo cizi - client jakoby prijde o pokus.
+
+## tsize
+
+kdyz se nepovede ziskat filesize, server pokracuje bez rozsireni tsize

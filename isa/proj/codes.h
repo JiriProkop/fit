@@ -4,11 +4,12 @@
 #include <netinet/in.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <sys/types.h>
 #include <stdio.h>
 
 #define ACK_PACKET_SIZE 4
 #define RETRY_SENT_COUNT 3
-#define SOCK_TIMEOUT 1
+#define SOCK_TIMEOUT 5
 
 #define IP_PROTOCOL 0
 #define MAX_PORT_NUM 65535
@@ -47,7 +48,7 @@ typedef struct {
     bool timeout;
     size_t timeout_val;
     bool tsize;
-    size_t tsize_val;
+    off_t tsize_val;
 } tftp_options_t; //TODO bool values are basicly useless
 
 uint16_t short16_from_chars(char *buf);
