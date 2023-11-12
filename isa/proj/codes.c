@@ -199,9 +199,19 @@ void text_from_mode(int mode, char *text, size_t text_len) {
     if (mode == octet_mode) {
         return;
     }
+    static bool hanging_cr = false;
+
     // change CR LF to LF
     for (size_t i = 0; i < text_len; i++) {
-        if (text[i] == '\r' && text[i + 1] == '\n') {
+        if (hanging_cr && text[0] == '\0') {
+            text[0] = '\r';
+            hanging_cr = false;
+            continue;
+        }
+        if (text[i] == 'r' && i + 1 == text_len) {
+            hanging_cr = true;
+            continue;
+        } else if (text[i] == '\r' && text[i + 1] == '\n') {
             text[i] = '\0';
         }
     }
@@ -353,7 +363,7 @@ size_t get_nchars_from_file(FILE *fp, size_t n, char *buf, int mode) {
     static int c = 0;
     size_t i = 0;
     // put left over letter from last reading
-    if (mode == octet_mode) {
+    if (mode == netascii_mode) {
         if (c == '\n') {
             buf[i++] = c;
         } else if (c == '\r') {
@@ -362,7 +372,7 @@ size_t get_nchars_from_file(FILE *fp, size_t n, char *buf, int mode) {
     }
     for (; i < n; i++) {
         c = fgetc(fp);
-        if (mode == octet_mode && (c == '\r' || c == '\n')) {
+        if (mode == netascii_mode && (c == '\r' || c == '\n')) {
             buf[i] = '\r';
             if (++i == n) {
                 return i;
