@@ -46,17 +46,23 @@ typedef enum {
 typedef struct {
     bool blksize;
     size_t blksize_val;
+    char *blksize_name;
+
     bool timeout;
     size_t timeout_val;
+    char *timeout_name;
+
     bool tsize;
     size_t tsize_val;
+    char *tsize_name;
+
+    char *order_names[4];
+    size_t *order_vals[4];
 } tftp_options_t;
 
 uint16_t short16_from_chars(char *buf);
 
-inline char *short_to_char(uint16_t *short16) {
-    return (char *)short16;
-}
+inline char *short_to_char(uint16_t *short16) { return (char *)short16; }
 
 int send_ack(uint16_t block_num, struct sockaddr_in address, int socket);
 
@@ -75,5 +81,17 @@ void text_from_mode(int mode, char *text, size_t text_len);
 int create_socket_for_process(unsigned timeout);
 
 size_t get_nchars_from_file(FILE *fp, size_t n, char *buf, int mode);
+
+int get_port_from_socket(int socket);
+
+void print_info_rrq(struct sockaddr_in src_address, uint16_t mode, char *filepath, tftp_options_t *options);
+
+void print_info_wrq(struct sockaddr_in src_address, uint16_t mode, char *filepath, tftp_options_t *options);
+
+void print_info_ack(struct sockaddr_in src_address, u_int16_t block_num);
+
+void print_info_err(struct sockaddr_in src_address, uint16_t err_code, char *err_msg, int own_port);
+
+void print_info_data(struct sockaddr_in src_address, u_int16_t block_num, int own_port);
 
 #endif

@@ -21,12 +21,9 @@
 #include "tftp.h"
 
 // This is used so I can ignore sprintf added '\0'
-#define A_IgnoreOverflow           \
-    _Pragma("GCC diagnostic push") \
-        _Pragma("GCC diagnostic ignored \"-Wformat-overflow=\"")
+#define A_IgnoreOverflow _Pragma("GCC diagnostic push") _Pragma("GCC diagnostic ignored \"-Wformat-overflow=\"")
 
-#define A_Pop \
-    _Pragma("GCC diagnostic pop")
+#define A_Pop _Pragma("GCC diagnostic pop")
 
 uint16_t short16_from_chars(char *buf) {
     union {
@@ -163,38 +160,65 @@ char *get_mode_name(uint16_t mode) {
     return "";
 }
 
-/*
-    @param num mode or block number or error code
-*/
-void print_info(struct sockaddr_in src_address, uint16_t opcode, uint16_t num, char *filepath) {
+int get_port_from_socket(int socket) {
+    struct sockaddr_in sin;
+    socklen_t len = sizeof(sin);
+    if (getsockname(socket, (struct sockaddr *)&sin, &len) == -1) {
+        printf("getsockname error - cannot get own port number! \n");
+        return -1;
+    } else {
+        return ntohs(sin.sin_port);
+    }
+}
+
+void print_info_rrq(struct sockaddr_in src_address, uint16_t mode, char *filepath, tftp_options_t *options) {
+    char *ip = inet_ntoa(src_address.sin_addr);
+    int port = ntohs(src_address.sin_port);
+    
+    // RRQ {SRC_IP}:{SRC_PORT} "{FILEPATH}" {MODE} {$OPTS}
+    fprintf(stderr, "RRQ %s:%d \"%s\" %s", ip, port, filepath, get_mode_name(mode));
+    for (int i = 0; options->order_names[i] != NULL; i++) {
+        fprintf(stderr, " %s=%zu", options->order_names[i], *(options->order_vals[i]));
+    }
+    fprintf(stderr, "\n");
+}
+
+void print_info_wrq(struct sockaddr_in src_address, uint16_t mode, char *filepath, tftp_options_t *options) {
     char *ip = inet_ntoa(src_address.sin_addr);
     int port = ntohs(src_address.sin_port);
 
-    switch (opcode) {
-        case read_req_opcode:
-            fprintf(stderr, "RRQ {%s}:{%d} \"{%s}\" {%s} {}\n", ip, port, filepath, get_mode_name(num));
-            // RRQ {SRC_IP}:{SRC_PORT} "{FILEPATH}" {MODE} {$OPTS}
-            break;
-        case write_req_opcode:
-            // WRQ {SRC_IP}:{SRC_PORT} "{FILEPATH}" {MODE} {$OPTS}
-            fprintf(stderr, "WRQ{%s}:{%d} \"{%s}\" {%s} {}\n", ip, port, filepath, get_mode_name(num));
-            break;
-        case ack_opcode:
-            // ACK {SRC_IP}:{SRC_PORT} {BLOCK_ID}
-            fprintf(stderr, "OACK\n");
-            break;
-        case data_opcode:
-            // DATA {SRC_IP}:{SRC_PORT}:{DST_PORT} {BLOCK_ID}
-            fprintf(stderr, "DATA\n");
-            break;
-        case error_opcode:
-            fprintf(stderr, "ERROR\n");
-            break;
-        default:
-            printf("Should never be here, something is terribly wrong!\n");
-            break;
+    // WRQ {SRC_IP}:{SRC_PORT} "{FILEPATH}" {MODE} {$OPTS}
+    fprintf(stderr, "WRQ %s:%d \"%s\" %s", ip, port, filepath, get_mode_name(mode));
+    for (int i = 0; options->order_names[i] != NULL; i++) {
+        fprintf(stderr, " %s=%zu", options->order_names[i], *(options->order_vals[i]));
     }
+    fprintf(stderr, "\n");
 }
+
+void print_info_ack(struct sockaddr_in src_address, u_int16_t block_num) {
+    char *ip = inet_ntoa(src_address.sin_addr);
+    int port = ntohs(src_address.sin_port);
+
+    // ACK {SRC_IP}:{SRC_PORT} {BLOCK_ID}
+    fprintf(stderr, "ACK %s:%d %d\n", ip, port, block_num);
+}
+
+void print_info_err(struct sockaddr_in src_address, uint16_t err_code, char *err_msg, int own_port) {
+    char *ip = inet_ntoa(src_address.sin_addr);
+    int port = ntohs(src_address.sin_port);
+
+    // ERROR {SRC_IP}:{SRC_PORT}:{DST_PORT} {CODE} "{MESSAGE}"
+    fprintf(stderr, "ERROR %s:%d:%d %d \"%s\"\n", ip, port, own_port, err_code, err_msg);
+}
+
+void print_info_data(struct sockaddr_in src_address, u_int16_t block_num, int own_port) {
+    char *ip = inet_ntoa(src_address.sin_addr);
+    int port = ntohs(src_address.sin_port);
+
+    // DATA {SRC_IP}:{SRC_PORT}:{DST_PORT} {BLOCK_ID}
+    fprintf(stderr, "DATA %s:%d:%d %d\n", ip, port, own_port, block_num);
+}
+
 /*
     Converts text from ascii to mode. In text_len is returned the new size
 */
@@ -259,6 +283,24 @@ void text_from_mode(int mode, char *text, size_t text_len) {
     }
 }
 
+char blksize_str[] = "blksize";
+char timeout_str[] = "timeout";
+char tsize_str[] = "tsize";
+
+void init_options(tftp_options_t *options) {
+    options->blksize = false;
+    options->blksize_val = 0;
+    options->blksize_name = blksize_str;
+
+    options->timeout = false;
+    options->timeout_val = 0;
+    options->timeout_name = timeout_str;
+
+    options->tsize = false;
+    options->tsize_val = 0;
+    options->tsize_name = tsize_str;
+}
+
 typedef enum {
     read_file_name,
     read_mode,
@@ -272,15 +314,6 @@ typedef enum {
     timeout,
     tsize,
 } value_for_enum;
-
-void init_options(tftp_options_t *options) {
-    options->blksize = false;
-    options->blksize_val = 0;
-    options->timeout = false;
-    options->timeout_val = 0;
-    options->tsize = false;
-    options->tsize_val = 0;
-}
 
 int parse_req_packet(char *two_buf, char *filename, char *mode_str, char *msg, size_t msg_size, tftp_options_t *options) {
     if (msg_size < 4) {
@@ -296,6 +329,7 @@ int parse_req_packet(char *two_buf, char *filename, char *mode_str, char *msg, s
     int temp_i = 0;
     int state = read_file_name;
     int value_for = none;
+    int option_counter = 0;
     size_t i;
     for (i = 2; i < msg_size; i++) {
         if (temp_i >= temp_buf_size) {
@@ -326,12 +360,18 @@ int parse_req_packet(char *two_buf, char *filename, char *mode_str, char *msg, s
                     if (strcmp(temp, "blksize") == 0) {
                         options->blksize = true;
                         value_for = blksize;
+                        options->order_names[option_counter] = options->blksize_name;
+                        options->order_vals[option_counter++] = &(options->blksize_val);
                     } else if (strcmp(temp, "timeout") == 0) {
                         value_for = timeout;
                         options->timeout = true;
+                        options->order_names[option_counter] = options->timeout_name;
+                        options->order_vals[option_counter++] = &(options->timeout_val);
                     } else if (strcmp(temp, "tsize") == 0) {
                         value_for = tsize;
                         options->tsize = true;
+                        options->order_names[option_counter] = options->tsize_name;
+                        options->order_vals[option_counter++] = &(options->tsize_val);
                     }
                     state = read_option_value;
                 }
@@ -371,6 +411,7 @@ int parse_req_packet(char *two_buf, char *filename, char *mode_str, char *msg, s
                 break;
         }
     }
+    options->order_names[option_counter] = NULL;
 
     if (msg[i - 1] != '\0') {
         printf("Wrong packet format! \n");
@@ -391,7 +432,8 @@ int create_socket_for_process(unsigned timeout) {
 
     if (setsockopt(process_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
         printf("Error setting timeout! \n");
-        return -1; // TODO this should return something else than socket error, because here, err packet can be sent
+        close(process_socket);
+        return -1;
     }
     return process_socket;
 }
