@@ -44,6 +44,15 @@ void free_and_exit(bool failure) {
     }
 }
 
+void close_socket_and_exit(bool failure, int socket) {
+    close(socket);
+    if (failure) {
+        exit(EXIT_FAILURE);
+    } else {
+        exit(EXIT_SUCCESS);
+    }
+}
+
 void parse_args(int argc, char *argv[]) {
     if (argc == 2) { // TODO --help or -h
         args.root_path = malloc(strlen(argv[1]) + 1);
@@ -111,6 +120,8 @@ void set_tsize_value_ifset(FILE *fp, tftp_options_t *options) {
     }
 }
 
+// FIXME blksize is probably true only for data blocks, other thigns should you tftfp default data size(because of error msg in err packet, which can arrive anytime)
+
 void tftp_read(struct sockaddr_in client_address, int mode, const char file_path[], tftp_options_t options) {
     size_t max_data_size = options.blksize ? options.blksize_val : TFTP_DEFAULT_DATA_SIZE;
     char buf[max_data_size + 4];
@@ -124,8 +135,7 @@ void tftp_read(struct sockaddr_in client_address, int mode, const char file_path
     if (fp == NULL) {
         printf("Couldn't read the file! (not present or insufficient privileges) %d \n", errno);
         send_error(file_not_found, "Couldn't read the file! (not present or insufficient privileges)! \r\n", client_address, process_socket);
-        close(process_socket);
-        exit(EXIT_FAILURE);
+        close_socket_and_exit(true, process_socket);
     }
     set_tsize_value_ifset(fp, &options);
 
@@ -135,15 +145,24 @@ void tftp_read(struct sockaddr_in client_address, int mode, const char file_path
     int prev_client_port = client_address.sin_port;
     struct in_addr prev_ip = client_address.sin_addr;
     uint16_t block_num = 1;
+    size_t data_size;
+    bool first_packet = true;
+    bool any_option = options.blksize || options.timeout || options.tsize;
 
     while (1) {
     sending_data_packet_read:
-        size_t data_size = get_nchars_from_file(fp, max_data_size, buf, mode);
-        printf("sending data of size: %ld \n", data_size);
-        to_break = data_size < max_data_size;
+        if(!(first_packet && any_option)){
+            data_size = get_nchars_from_file(fp, max_data_size, buf, mode);
+            printf("sending data of size: %ld \n", data_size);
+            to_break = data_size < max_data_size;
+        }
         for (int i = 0; i < RETRY_SENT_COUNT; i++) {
-
-            bytestx = send_data(block_num, buf, data_size, client_address, process_socket);
+            if(!(first_packet && any_option)){
+                bytestx = send_data(block_num, buf, data_size, client_address, process_socket);
+            }else{
+                bytestx = send_0ack(client_address, process_socket, &options);
+                block_num = 0;
+            }
             if (bytestx < 0) {
                 printf("Sendto error! \n");
                 continue;
@@ -165,9 +184,9 @@ void tftp_read(struct sockaddr_in client_address, int mode, const char file_path
             code = ntohs(code);
             switch (code) {
                 case error_opcode:
-                    close(process_socket);
                     fclose(fp);
-                    exit(EXIT_FAILURE);
+                    close_socket_and_exit(true, process_socket);
+                    break;
                 case ack_opcode:
                     if (block_num != ntohs(short16_from_chars(buf + 2))) {
                         continue;
@@ -175,27 +194,33 @@ void tftp_read(struct sockaddr_in client_address, int mode, const char file_path
                         if (to_break) {
                             goto end_loop_read; // this was the last packet, we can leave
                         }
+                        first_packet = false;
                         block_num++;
                         goto sending_data_packet_read;
                     }
                 default:
                     printf("Received packet has unknown opcode! \n");
                     fclose(fp);
-                    close(process_socket);
-                    exit(EXIT_FAILURE);
+                    close_socket_and_exit(true, process_socket);
             }
         }
         // didnt get ack for the RETRY_SENT_COUNTth time -> quiting
         send_error(not_defined, "Timed out! \r\n", client_address, process_socket);
         fclose(fp);
-        close(process_socket);
-        exit(EXIT_FAILURE);
+        close_socket_and_exit(true, process_socket);
     }
 end_loop_read:
     printf("READINF OF %s DONE \n", file_path);
     fclose(fp);
-    close(process_socket);
-    exit(EXIT_SUCCESS);
+    close_socket_and_exit(false, process_socket);
+}
+
+bool file_already_exists_check(const char file_path[]) {
+    if (access(file_path, F_OK) == 0) {
+        printf("file already exists \n");
+        return true;
+    }
+    return false;
 }
 
 void tftp_write(struct sockaddr_in client_address, int mode, const char file_path[], tftp_options_t options) {
@@ -204,22 +229,18 @@ void tftp_write(struct sockaddr_in client_address, int mode, const char file_pat
     int process_socket = create_socket_for_process(options.timeout_val);
     if (process_socket < 0) {
         send_error(not_defined, "Socket creation error! \r\n", client_address, server_socket);
-        close(process_socket);
         exit(EXIT_FAILURE);
+    }
+    if (file_already_exists_check(file_path)) {
+        send_error(file_already_exists, "File already exists! \r\n", client_address, process_socket);
+        close_socket_and_exit(true, process_socket);
     }
 
-    if (access(file_path, F_OK) == 0) {
-        send_error(file_already_exists, "File already exists! \r\n", client_address, process_socket);
-        printf("file already exists \n");
-        close(process_socket);
-        exit(EXIT_FAILURE);
-    }
     FILE *fp = fopen(file_path, "w");
     if (fp == NULL) {
         printf("Couldn't create the file! (probably insufficient privileges) %d \n", errno);
         send_error(access_violation, "Couldn't create the file! \r\n", client_address, process_socket);
-        close(process_socket);
-        exit(EXIT_FAILURE);
+        close_socket_and_exit(true, process_socket);
     }
     int bytestx;
     socklen_t addr_len = sizeof(client_address);
@@ -227,12 +248,20 @@ void tftp_write(struct sockaddr_in client_address, int mode, const char file_pat
     int prev_client_port = client_address.sin_port;
     struct in_addr prev_ip = client_address.sin_addr;
     uint16_t block_num = 0;
+    bool first_packet = true;
+    bool any_option = options.blksize || options.timeout || options.tsize;
 
     while (1) {
     sending_ack_packet_write:
         for (int i = 0; i < RETRY_SENT_COUNT; i++) {
             // send ack
-            if (send_ack(block_num, client_address, process_socket) < 0) {
+            if (first_packet && any_option) {
+                if (send_0ack(client_address, process_socket, &options) < 0) {
+                    printf("Sendto error! \n");
+                    continue;
+                }
+                block_num++;
+            } else if (send_ack(block_num, client_address, process_socket) < 0) {
                 printf("Sendto error! \n");
                 continue;
             }
@@ -257,14 +286,15 @@ void tftp_write(struct sockaddr_in client_address, int mode, const char file_pat
             code = ntohs(code);
             switch (code) {
                 case error_opcode:
-                    close(process_socket);
                     fclose(fp);
-                    exit(EXIT_FAILURE);
+                    close_socket_and_exit(true, process_socket);
+                    break;
                 case data_opcode:
                     if (block_num + 1 != ntohs(short16_from_chars(buf + 2))) {
                         continue;
                     }
                     to_break = data_size < max_data_size;
+                    first_packet = false;
 
                     printf("writing file... \n");
                     text_from_mode(mode, buf + 4, data_size); // convert from netascii to normalascii
@@ -277,21 +307,18 @@ void tftp_write(struct sockaddr_in client_address, int mode, const char file_pat
                 default:
                     printf("Received packet has unknown opcode! \n");
                     fclose(fp);
-                    close(process_socket);
-                    exit(EXIT_FAILURE);
+                    close_socket_and_exit(true, process_socket);
             }
         }
         // didnt get ack for the RETRY_SENT_COUNTth time -> quiting
         send_error(not_defined, "Timed out! \r\n", client_address, process_socket);
         fclose(fp);
-        close(process_socket);
-        exit(EXIT_FAILURE);
+        close_socket_and_exit(true, process_socket);
     }
 end_loop_write:
     printf("WRITING OF %s DONE \n", file_path);
     fclose(fp);
-    close(process_socket);
-    exit(EXIT_SUCCESS);
+    close_socket_and_exit(false, process_socket);
 }
 
 void main_loop() {

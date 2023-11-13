@@ -4,8 +4,8 @@
 #include <netinet/in.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <sys/types.h>
 #include <stdio.h>
+#include <sys/types.h>
 
 #define ACK_PACKET_SIZE 4
 #define RETRY_SENT_COUNT 3
@@ -50,7 +50,7 @@ typedef struct {
     size_t timeout_val;
     bool tsize;
     size_t tsize_val;
-} tftp_options_t; //TODO bool values are basicly useless
+} tftp_options_t; // TODO bool values are basicly useless
 
 uint16_t short16_from_chars(char *buf);
 
@@ -65,6 +65,8 @@ int send_error(uint16_t err_code, char *err_msg, struct sockaddr_in address, int
 int send_data(uint16_t block_num, char *data, unsigned data_len, struct sockaddr_in address, int socket);
 
 int send_request(uint16_t op_code, char *filename, char *mode, struct sockaddr_in address, int socket);
+
+int send_0ack(struct sockaddr_in address, int socket, tftp_options_t *options);
 
 int parse_req_packet(char *two_buf, char *filename, char *mode_str, char *msg, size_t msg_size, tftp_options_t *options);
 

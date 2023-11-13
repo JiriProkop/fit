@@ -111,18 +111,18 @@ int send_request(uint16_t op_code, char *filename, char *mode, struct sockaddr_i
 }
 
 /*
-    Including the '\0' 
+    Including the '\0'
 */
 int get_char_size_of_num(size_t num) {
     int i = 0;
-    for (; num != 0; i++){
+    for (; num != 0; i++) {
         num /= 10;
     }
     return i + 1;
 }
 
-size_t get_0ack_buff_size(tftp_options_t *options) {
-    size_t buff_size = 2;
+long get_0ack_buff_size(tftp_options_t *options) {
+    long buff_size = 2;
     if (options->blksize) {
         buff_size += strlen("blksize") + 1;
         buff_size += get_char_size_of_num(options->blksize_val);
@@ -141,13 +141,17 @@ size_t get_0ack_buff_size(tftp_options_t *options) {
 int send_0ack(struct sockaddr_in address, int socket, tftp_options_t *options) {
     uint16_t op_code = htons((uint16_t)oack_opcode);
     char *op = short_to_char(&op_code);
-    size_t buff_size = get_0ack_buff_size(options);
-
-    // gg just add the string and move the msg pointer :fiveHead:
+    long buff_size = get_0ack_buff_size(options);
 
     char msg[buff_size];
-    unsigned check = sprintf(msg, "%c%c", op[0], op[1]);
-    assert(check == buff_size); // FIXME remove before submiting
+    msg[0] = op[0];
+    msg[1] = op[1];
+    char *msg_ptr = msg + 2;
+    msg_ptr += sprintf(msg_ptr, "%s%c%zu", "blksize", '\0', options->blksize_val);
+    msg_ptr += sprintf(msg_ptr, "%s%c%zu", "timeout", '\0', options->timeout_val);
+    msg_ptr += sprintf(msg_ptr, "%s%c%zu", "tsize", '\0', options->tsize_val);
+
+    assert(msg_ptr - msg == buff_size); // FIXME remove before submiting
     return sendto(socket, msg, buff_size, 0, (struct sockaddr *)&address, sizeof(address));
 }
 
