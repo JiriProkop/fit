@@ -133,11 +133,10 @@ void set_tsize_value_ifset(FILE *fp, tftp_options_t *options) {
     }
 }
 
-// FIXME blksize is probably true only for data blocks, other thigns should you tftfp default data size(because of error msg in err packet, which can arrive anytime)
-
 void tftp_read(struct sockaddr_in client_address, int mode, const char file_path[], tftp_options_t options) {
     size_t max_data_size = options.blksize ? options.blksize_val : TFTP_DEFAULT_DATA_SIZE;
-    char buf[max_data_size + 4];
+    size_t buff_size = max_data_size < TFTP_DEFAULT_DATA_SIZE ? TFTP_DEFAULT_DATA_SIZE + 4 : max_data_size + 4;
+    char buf[buff_size];
     int process_socket = create_socket_for_process(options.timeout_val);
     if (process_socket < 0) {
         send_error(not_defined, "Socket creation failed! \r\n", client_address, server_socket);
@@ -181,7 +180,7 @@ void tftp_read(struct sockaddr_in client_address, int mode, const char file_path
                 continue;
             }
             // wait for ack
-            bytestx = recvfrom(process_socket, buf, max_data_size + 4, 0, (struct sockaddr *)&client_address, &addr_len);
+            bytestx = recvfrom(process_socket, buf, TFTP_DEFAULT_DATA_SIZE + 4, 0, (struct sockaddr *)&client_address, &addr_len);
             if (bytestx < 0) {
                 printf("Recvfrom error or timeout! \n");
                 continue;
@@ -238,7 +237,8 @@ bool file_already_exists_check(const char file_path[]) {
 
 void tftp_write(struct sockaddr_in client_address, int mode, const char file_path[], tftp_options_t options) {
     size_t max_data_size = options.blksize ? options.blksize_val : TFTP_DEFAULT_DATA_SIZE;
-    char buf[max_data_size + 4];
+    size_t buff_size = max_data_size < TFTP_DEFAULT_DATA_SIZE ? TFTP_DEFAULT_DATA_SIZE + 4 : max_data_size + 4;
+    char buf[buff_size];
     int process_socket = create_socket_for_process(options.timeout_val);
     if (process_socket < 0) {
         send_error(not_defined, "Socket creation error! \r\n", client_address, server_socket);
@@ -282,7 +282,7 @@ void tftp_write(struct sockaddr_in client_address, int mode, const char file_pat
                 goto end_loop_write;
             }
 
-            bytestx = recvfrom(process_socket, buf, max_data_size + 4, 0, (struct sockaddr *)&client_address, &addr_len);
+            bytestx = recvfrom(process_socket, buf, buff_size, 0, (struct sockaddr *)&client_address, &addr_len);
             if (bytestx < 0) {
                 printf("Recvfrom error or timeout! \n");
                 continue;
@@ -355,13 +355,13 @@ void main_loop() {
 
     printf("Server is running...\n");
     int bytesrx;
-    char buf[TFTP_DEFAULT_DATA_SIZE];
+    char buf[TFTP_DEFAULT_DATA_SIZE + 4];
     struct sockaddr_in client_address;
     socklen_t clientlen = sizeof(client_address);
     tftp_options_t options;
 
     while (1) {
-        bytesrx = recvfrom(server_socket, buf, TFTP_DEFAULT_DATA_SIZE, 0, (struct sockaddr *)&client_address, &clientlen);
+        bytesrx = recvfrom(server_socket, buf, TFTP_DEFAULT_DATA_SIZE + 4, 0, (struct sockaddr *)&client_address, &clientlen);
         if (bytesrx < 0) {
             printf("Recvfrom error! \n");
             continue;
