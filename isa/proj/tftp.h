@@ -15,7 +15,7 @@
 #define IP_PROTOCOL 0
 #define MAX_PORT_NUM 65535
 #define TFTP_DEFAULT_SERVER_PORT 69
-#define TFTP_DEFAULT_DATA_SIZE 512 // FIXME this is true just for the data blocks, initial request can be longer
+#define TFTP_DEFAULT_DATA_SIZE 512
 
 typedef enum {
     read_req_opcode = 1,
@@ -50,7 +50,7 @@ typedef struct {
     size_t timeout_val;
     bool tsize;
     size_t tsize_val;
-} tftp_options_t; // TODO bool values are basicly useless
+} tftp_options_t;
 
 uint16_t short16_from_chars(char *buf);
 

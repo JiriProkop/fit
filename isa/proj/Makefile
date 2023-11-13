@@ -4,7 +4,7 @@ CLIENT = tftp-client
 CC = gcc
 CFLAGS = -Wall -Wextra -std=c11
 LDLIBS =
-DEPS = codes.c codes.h
+DEPS = tftp.c tftp.h
 
 
 .PHONY: clean all

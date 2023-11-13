@@ -15,7 +15,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "codes.h"
+#include "tftp.h"
 
 typedef struct {
     long port;
@@ -53,8 +53,20 @@ void close_socket_and_exit(bool failure, int socket) {
     }
 }
 
+void print_help() {
+    printf("Usage: tftp-server [-p port] root_dirpath\n");
+    printf("  -h, --help\tPrint this help message\n");
+    printf("  -p\t\tLocal port on which the server will expect incoming connections\n");
+    printf("    \t\tDefault port is 69 if not specified\n");
+    printf("root_dirpath\tPath to the directory where incoming files will be saved\n");
+}
+
 void parse_args(int argc, char *argv[]) {
-    if (argc == 2) { // TODO --help or -h
+    if (argc == 2) {
+        if (!strcmp(argv[1], "--help") || !strcmp(argv[1], "-h")) {
+            print_help();
+            exit(EXIT_SUCCESS);
+        }
         args.root_path = malloc(strlen(argv[1]) + 1);
         if (args.root_path == NULL) {
             printf("Memory allocation error!\n");
@@ -85,6 +97,7 @@ void parse_args(int argc, char *argv[]) {
         }
     } else {
         printf("Wrong argument count!\n");
+        print_help();
         exit(EXIT_FAILURE);
     }
     // check if dir exists
@@ -151,15 +164,15 @@ void tftp_read(struct sockaddr_in client_address, int mode, const char file_path
 
     while (1) {
     sending_data_packet_read:
-        if(!(first_packet && any_option)){
+        if (!(first_packet && any_option)) {
             data_size = get_nchars_from_file(fp, max_data_size, buf, mode);
             printf("sending data of size: %ld \n", data_size);
             to_break = data_size < max_data_size;
         }
         for (int i = 0; i < RETRY_SENT_COUNT; i++) {
-            if(!(first_packet && any_option)){
+            if (!(first_packet && any_option)) {
                 bytestx = send_data(block_num, buf, data_size, client_address, process_socket);
-            }else{
+            } else {
                 bytestx = send_0ack(client_address, process_socket, &options);
                 block_num = 0;
             }
@@ -352,10 +365,6 @@ void main_loop() {
         if (bytesrx < 0) {
             printf("Recvfrom error! \n");
             continue;
-        } else if (bytesrx > TFTP_DEFAULT_DATA_SIZE) {
-            printf("Received REQ packet is bigger than the maximum defined in RFC2347!\n");
-            // TODO SEND ERR
-            continue;
         }
         printf("some packet obtained \n");
         char mode_str[9];
@@ -388,7 +397,7 @@ void main_loop() {
         if (pid == -1) {
             printf("Fork error! \n");
             send_error(not_defined, "Creation of process(fork) failed! \r\n", client_address, server_socket);
-        } else if (pid == 0) { // child
+        } else if (pid == 0) {
             if (code == read_req_opcode) {
                 printf("read req obtained \n");
                 tftp_read(client_address, mode, file_path, options);

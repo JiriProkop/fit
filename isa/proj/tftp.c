@@ -18,7 +18,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "codes.h"
+#include "tftp.h"
 
 // This is used so I can ignore sprintf added '\0'
 #define A_IgnoreOverflow           \
@@ -84,7 +84,6 @@ int send_data(uint16_t block_num, char *data, unsigned data_len, struct sockaddr
     char *op = short_to_char(&op_code);
     char *block = short_to_char(&block_num);
 
-    // read or just give data, not decided yet
     unsigned buff_size = data_len + sizeof(op_code) + sizeof(block_num);
     char msg[buff_size];
     msg[0] = op[0];
@@ -168,8 +167,6 @@ char *get_mode_name(uint16_t mode) {
     @param num mode or block number or error code
 */
 void print_info(struct sockaddr_in src_address, uint16_t opcode, uint16_t num, char *filepath) {
-    // get source ip
-    // get src port
     char *ip = inet_ntoa(src_address.sin_addr);
     int port = ntohs(src_address.sin_port);
 

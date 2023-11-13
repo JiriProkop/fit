@@ -15,7 +15,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "codes.h"
+#include "tftp.h"
 
 #define IP_PROTOCOL 0
 #define MAX_PORT_NUM 65535
@@ -60,8 +60,20 @@ void sig_handler(int _) {
     free_and_exit(false);
 }
 
+void print_help() {
+    printf("Usage: tftp-client -h hostname [-p port] [-f filepath] -t dest_filepath\n");
+    printf("  -h   IP address/domain name of the remote server\n");
+    printf("  -p   Port of the remote server (default is specified in the RFC TFTP(69))\n");
+    printf("  -f   Path to the file to be downloaded from the server (download)\n");
+    printf("       If not specified, content from stdin will be used (upload)\n");
+    printf("  -t   Path under which the file will be stored on the remote server or locally\n");
+}
+
 void parse_args(int argc, char *argv[]) {
-    // if argc == 2 && argv[1] == "--help": show help
+    if (argc == 2 && (!strcmp(argv[1], "--help") || !strcmp(argv[1], "-h"))) {
+        print_help();
+        exit(EXIT_SUCCESS);
+    }
 
     int opt;
     while ((opt = getopt(argc, argv, "h:p:f:t:")) != -1) {
@@ -111,20 +123,18 @@ void parse_args(int argc, char *argv[]) {
                 free_and_exit(true);
                 break;
             default:
-                // TODO print help
                 free_and_exit(true);
         }
     }
     if (args.hostname == NULL || args.future_file_path == NULL) {
-        printf("%s, %s \n", args.hostname, args.future_file_path);
         printf("-h and -t arguments are required! \n");
+        print_help();
         free_and_exit(true);
     } else if (args.future_file_path != NULL && access(args.future_file_path, F_OK) == 0) {
         printf("File '%s' already exists \n", args.future_file_path);
         free_and_exit(true);
     }
 }
-// TODO send error packets when needed
 
 void read_req(struct sockaddr_in server_address, int socket) {
     char buf[TFTP_DEFAULT_DATA_SIZE + 4]; // without extensions
@@ -147,7 +157,7 @@ void read_req(struct sockaddr_in server_address, int socket) {
             if (first_packet) {
                 if (send_request(read_req_opcode, args.to_transfer_file_path, "octet", server_address, socket) < 0) {
                     printf("Sendto error! \n");
-                    free_and_exit(true);
+                    continue;
                 }
             } else {
                 if (send_ack(block_num, server_address, socket) < 0) {
@@ -198,6 +208,7 @@ void read_req(struct sockaddr_in server_address, int socket) {
                     goto sending_packet_write;
                 default:
                     printf("Received packet has unknown opcode! \n");
+                    send_error(illegal_operation, "Wrong request format(unknown opcode)! \r\n", server_address, socket);
                     fclose(fp);
                     free_and_exit(true);
             }
@@ -209,7 +220,7 @@ end_loop_write:
 }
 
 void write_req(struct sockaddr_in server_address, int socket) {
-    char buf[TFTP_DEFAULT_DATA_SIZE + 4]; // FIXME this is probably true only without extensions
+    char buf[TFTP_DEFAULT_DATA_SIZE + 4];
 
     FILE *fp = stdin;
 
@@ -230,7 +241,7 @@ void write_req(struct sockaddr_in server_address, int socket) {
             if (first_packet) {
                 if (send_request(write_req_opcode, args.future_file_path, "octet", server_address, socket) < 0) {
                     printf("Sendto error! \n");
-                    free_and_exit(true);
+                    continue;
                 }
             } else {
                 bytestx = send_data(block_num, buf, data_size, server_address, socket);
@@ -275,6 +286,7 @@ void write_req(struct sockaddr_in server_address, int socket) {
                     break;
                 default:
                     printf("Received packet has unknown opcode! \n");
+                    send_error(illegal_operation, "Wrong request format(unknown opcode)! \r\n", server_address, socket);
                     free_and_exit(true);
             }
         }
