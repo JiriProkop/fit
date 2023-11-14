@@ -211,6 +211,12 @@ void read_req(struct sockaddr_in server_address, int socket) {
                     }
                     block_num++;
                     goto sending_packet_write;
+                case oack_opcode:
+                case ack_opcode:
+                case read_req_opcode:
+                case write_req_opcode:
+                    print_info_not_parsed(server_address, buf, bytestx, socket);
+                    break;
                 default:
                     printf("Received packet has unknown opcode! \n");
                     send_error(illegal_operation, "Wrong request format(unknown opcode)! \r\n", server_address, socket);
@@ -277,6 +283,7 @@ void write_req(struct sockaddr_in server_address, int socket) {
             code = ntohs(code);
             switch (code) {
                 case error_opcode:
+                    // TODO dolelat print info na mista jako je toto, server i client
                     free_and_exit(true);
                     break;
                 case ack_opcode:
@@ -293,6 +300,12 @@ void write_req(struct sockaddr_in server_address, int socket) {
                         block_num++;
                         goto sending_packet_read;
                     }
+                    break;
+                case oack_opcode:
+                case data_opcode:
+                case read_req_opcode:
+                case write_req_opcode:
+                    print_info_not_parsed(server_address, buf, bytestx, socket);
                     break;
                 default:
                     printf("Received packet has unknown opcode! \n");

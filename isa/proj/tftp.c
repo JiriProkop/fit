@@ -219,6 +219,107 @@ void print_info_data(struct sockaddr_in src_address, u_int16_t block_num, int ow
     fprintf(stderr, "DATA %s:%d:%d %d\n", ip, port, own_port, block_num);
 }
 
+void print_unparsed_options(char *msg, size_t msg_len) {
+    unsigned word_count = 0;
+    char *start = msg;
+    for (size_t i = 0; i < msg_len; i++) {
+        if (msg[i] == '\0') {
+            if (word_count % 2 == 0) {
+                fprintf(stderr, " %s=", start);
+            } else {
+                fprintf(stderr, "%s", start);
+            }
+
+            start = msg + i + 1;
+            word_count++;
+        }
+    }
+    fprintf(stderr, "\n");
+}
+
+void print_info_not_parsed(struct sockaddr_in src_address, char *msg, size_t msg_len, int own_socket) {
+    if (msg_len < 4)
+        return;
+    char *ip = inet_ntoa(src_address.sin_addr);
+    int port = ntohs(src_address.sin_port);
+
+    uint16_t code = short16_from_chars(msg);
+    code = ntohs(code);
+    uint16_t packet_block_num;
+    unsigned word_count;
+    size_t i;
+    char *start;
+
+    switch (code) {
+        case oack_opcode:
+            // OACK {SRC_IP}:{SRC_PORT} {$OPTS}
+            fprintf(stderr, "OACK %s:%d", ip, port);
+            print_unparsed_options(msg + 2, msg_len - 2);
+            break;
+
+        case ack_opcode:
+            packet_block_num = short16_from_chars(msg + 2);
+            packet_block_num = ntohs(packet_block_num);
+
+            // ACK {SRC_IP}:{SRC_PORT} {BLOCK_ID}
+            fprintf(stderr, "ACK %s:%d %d\n", ip, port, packet_block_num);
+            break;
+
+        case data_opcode:
+            packet_block_num = short16_from_chars(msg + 2);
+            packet_block_num = ntohs(packet_block_num);
+
+            // DATA {SRC_IP}:{SRC_PORT}:{DST_PORT} {BLOCK_ID}
+            fprintf(stderr, "DATA %s:%d:%d %d\n", ip, port, get_port_from_socket(own_socket), packet_block_num);
+            break;
+
+        case error_opcode:
+            uint16_t err_code = short16_from_chars(msg + 2);
+            err_code = ntohs(err_code);
+
+            // ERROR {SRC_IP}:{SRC_PORT}:{DST_PORT} {CODE} "{MESSAGE}"
+            fprintf(stderr, "ERROR %s:%d:%d %d", ip, port, get_port_from_socket(own_socket), err_code);
+            msg += 4;
+            for (i = 0; i < msg_len - 4 && msg[i] != '\0'; i++) {
+                fputc(msg[i], stderr);
+            }
+            fputc('\n', stderr);
+            break;
+
+        case read_req_opcode:
+            // RRQ {SRC_IP}:{SRC_PORT} "{FILEPATH}" {MODE} {$OPTS}
+            fprintf(stderr, "RRQ %s:%d", ip, port);
+
+            word_count = 0;
+            start = msg + 2;
+            for (i = 2; i < msg_len && word_count < 2; i++) {
+                if (msg[i] == '\0') {
+                    fprintf(stderr, " %s", start);
+                    start = msg + i + 1;
+                    word_count++;
+                }
+            }
+            print_unparsed_options(start, msg_len - i);
+            break;
+
+        case write_req_opcode:
+            // WRQ {SRC_IP}:{SRC_PORT} "{FILEPATH}" {MODE} {$OPTS}
+            fprintf(stderr, "WRQ %s:%d", ip, port);
+
+            word_count = 0;
+            start = msg + 2;
+            for (i = 2; i < msg_len && word_count < 2; i++) {
+                if (msg[i] == '\0') {
+                    fprintf(stderr, " %s", start);
+                    start = msg + i + 1;
+                    word_count++;
+                }
+            }
+            print_unparsed_options(start, msg_len - i);
+            break;
+    }
+}
+
 /*
     Converts text from ascii to mode. In text_len is returned the new size
 */

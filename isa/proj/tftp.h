@@ -96,4 +96,6 @@ void print_info_err(struct sockaddr_in src_address, uint16_t err_code, char *err
 
 void print_info_data(struct sockaddr_in src_address, u_int16_t block_num, int own_port);
 
+void print_info_not_parsed(struct sockaddr_in src_address, char *msg, size_t msg_len, int own_socket);
+
 #endif

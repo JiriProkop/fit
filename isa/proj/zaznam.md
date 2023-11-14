@@ -18,13 +18,12 @@ interakce a az potom uplne skonci.
 
 ## timeout
 
-timeout je nastaven u recvfrom protoze je to tak nejjednodusi a resend se dela podle hodnoty v codes.h .
+timeout je nastaven u recvfrom protoze je to tak nejjednodusi a resend se dela podle hodnoty v tftp.h .
 Kdyz mi teda posle packet nekdo cizi - client jakoby prijde o pokus.
 
 ## tsize
 
 kdyz se nepovede ziskat filesize, server pokracuje bez rozsireni tsize
 
-
-
 note: nekontroluju, ze nechodi vic nez by melo. Podle rfc 2347, by to melo byt ok.
+note: zminit, jestli moje implementace zvladne vytvaret slozky

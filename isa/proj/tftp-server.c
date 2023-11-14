@@ -192,21 +192,29 @@ void tftp_read(struct sockaddr_in client_address, int mode, const char file_path
                 continue;
             }
             if (client_address.sin_addr.s_addr != prev_ip.s_addr || client_address.sin_port != prev_client_port) {
+                print_info_not_parsed(client_address, buf, bytestx, process_socket);
                 send_error(unknown_tid, "Unknown sender address or TID! \r\n", client_address, process_socket);
                 client_address.sin_addr = prev_ip;
                 client_address.sin_port = prev_client_port;
                 continue;
             }
+            uint16_t packet_block_num;
             // check ack, print info
             uint16_t code = short16_from_chars(buf);
             code = ntohs(code);
             switch (code) {
                 case error_opcode:
+                    uint16_t err_code = short16_from_chars(buf + 2);
+                    err_code = ntohs(code);
+                    print_info_err(client_address, err_code, buf + 4, get_port_from_socket(process_socket));
                     fclose(fp);
                     close_socket_and_exit(true, process_socket);
                     break;
+
                 case ack_opcode:
-                    if (block_num != ntohs(short16_from_chars(buf + 2))) {
+                    packet_block_num = ntohs(short16_from_chars(buf + 2));
+                    print_info_ack(client_address, packet_block_num);
+                    if (block_num != packet_block_num) {
                         continue;
                     } else {
                         if (to_break) {
@@ -216,6 +224,13 @@ void tftp_read(struct sockaddr_in client_address, int mode, const char file_path
                         block_num++;
                         goto sending_data_packet_read;
                     }
+                    break;
+                case oack_opcode:
+                case data_opcode:
+                case read_req_opcode:
+                case write_req_opcode:
+                    print_info_not_parsed(client_address, buf, bytestx, process_socket);
+                    break;
                 default:
                     printf("Received packet has unknown opcode! \n");
                     fclose(fp);
@@ -299,6 +314,7 @@ void tftp_write(struct sockaddr_in client_address, int mode, const char file_pat
                 continue;
             }
             if (client_address.sin_addr.s_addr != prev_ip.s_addr || client_address.sin_port != prev_client_port) {
+                print_info_not_parsed(client_address, buf, bytestx, process_socket);
                 send_error(unknown_tid, "Unknown sender address or TID! \r\n", client_address, process_socket);
                 client_address.sin_addr = prev_ip;
                 client_address.sin_port = prev_client_port;
@@ -328,6 +344,12 @@ void tftp_write(struct sockaddr_in client_address, int mode, const char file_pat
                     }
                     block_num++;
                     goto sending_ack_packet_write;
+                case oack_opcode:
+                case ack_opcode:
+                case read_req_opcode:
+                case write_req_opcode:
+                    print_info_not_parsed(client_address, buf, bytestx, process_socket);
+                    break;
                 default:
                     printf("Received packet has unknown opcode! \n");
                     fclose(fp);
@@ -410,10 +432,14 @@ void main_loop() {
             send_error(not_defined, "Creation of process(fork) failed! \r\n", client_address, server_socket);
         } else if (pid == 0) {
             if (code == read_req_opcode) {
-                printf("read req obtained \n");
+                tftp_options_t options_for_print = options;
+                print_info_rrq(client_address, mode, file_path + strlen(args.root_path), &options_for_print);
+
                 tftp_read(client_address, mode, file_path, options);
             } else if (code == write_req_opcode) {
-                printf("write req obtained \n");
+                tftp_options_t options_for_print = options;
+                print_info_wrq(client_address, mode, file_path + strlen(args.root_path), &options_for_print);
+
                 tftp_write(client_address, mode, file_path, options);
             } else {
                 printf("Received packet has unknown opcode! \n");
