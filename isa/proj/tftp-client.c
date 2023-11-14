@@ -154,6 +154,11 @@ void read_req(struct sockaddr_in server_address, int socket) {
     while (1) {
     sending_packet_write:
         for (int i = 0; i < RETRY_SENT_COUNT; i++) {
+            if (!set_socket_exp_timeout(socket, i)) { // exponential timeout increase
+                send_error(not_defined, "Error setting timeout! \r\n", server_address, socket);
+                fclose(fp);
+                free_and_exit(true);
+            }
             if (first_packet) {
                 if (send_request(read_req_opcode, args.to_transfer_file_path, "octet", server_address, socket) < 0) {
                     printf("Sendto error! \n");
@@ -238,6 +243,11 @@ void write_req(struct sockaddr_in server_address, int socket) {
         printf("sending data of size: %ld \n", data_size);
         to_break = data_size < TFTP_DEFAULT_DATA_SIZE;
         for (int i = 0; i < RETRY_SENT_COUNT; i++) {
+            if (!set_socket_exp_timeout(socket, i)) {
+                send_error(not_defined, "Error setting timeout! \r\n", server_address, socket);
+                fclose(fp);
+                free_and_exit(true);
+            }
             if (first_packet) {
                 if (send_request(write_req_opcode, args.future_file_path, "octet", server_address, socket) < 0) {
                     printf("Sendto error! \n");
@@ -303,8 +313,8 @@ void logic() {
     server_address.sin_addr.s_addr = INADDR_ANY;
     struct hostent *server;
     /*
-        The next few lines of code were taken from: https://git.fit.vutbr.cz/NESFIT/IPK-Projekty/src/branch/master/Stubs/cpp/DemoUdp/client.c
-        Author: Ondrej Rysavy (rysavy@fit.vutbr.cz)
+        The next few lines of code were taken from:
+       https://git.fit.vutbr.cz/NESFIT/IPK-Projekty/src/branch/master/Stubs/cpp/DemoUdp/client.c Author: Ondrej Rysavy (rysavy@fit.vutbr.cz)
     */
     if ((server = gethostbyname(args.hostname)) == NULL) {
         printf("ERROR: no such host as %s\n", args.hostname);

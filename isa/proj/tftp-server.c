@@ -146,7 +146,8 @@ void tftp_read(struct sockaddr_in client_address, int mode, const char file_path
     FILE *fp = fopen(file_path, "r");
     if (fp == NULL) {
         printf("Couldn't read the file! (not present or insufficient privileges) %d \n", errno);
-        send_error(file_not_found, "Couldn't read the file! (not present or insufficient privileges)! \r\n", client_address, process_socket);
+        send_error(file_not_found, "Couldn't read the file! (not present or insufficient privileges)! \r\n", client_address,
+                   process_socket);
         close_socket_and_exit(true, process_socket);
     }
     set_tsize_value_ifset(fp, &options);
@@ -169,6 +170,11 @@ void tftp_read(struct sockaddr_in client_address, int mode, const char file_path
             to_break = data_size < max_data_size;
         }
         for (int i = 0; i < RETRY_SENT_COUNT; i++) {
+            if (!options.timeout && !set_socket_exp_timeout(process_socket, i)) { // exponential timeout increase
+                send_error(not_defined, "Error setting timeout! \r\n", client_address, process_socket);
+                fclose(fp);
+                close_socket_and_exit(true, process_socket);
+            }
             if (!(first_packet && any_option)) {
                 bytestx = send_data(block_num, buf, data_size, client_address, process_socket);
             } else {
@@ -267,6 +273,11 @@ void tftp_write(struct sockaddr_in client_address, int mode, const char file_pat
     while (1) {
     sending_ack_packet_write:
         for (int i = 0; i < RETRY_SENT_COUNT; i++) {
+            if (!options.timeout && !set_socket_exp_timeout(process_socket, i)) {
+                send_error(not_defined, "Error setting timeout! \r\n", client_address, process_socket);
+                fclose(fp);
+                close_socket_and_exit(true, process_socket);
+            }
             // send ack
             if (first_packet && any_option) {
                 if (send_0ack(client_address, process_socket, &options) < 0) {

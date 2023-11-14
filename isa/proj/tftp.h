@@ -78,6 +78,8 @@ int parse_req_packet(char *two_buf, char *filename, char *mode_str, char *msg, s
 
 void text_from_mode(int mode, char *text, size_t text_len);
 
+bool set_socket_exp_timeout(int socket, int iter);
+
 int create_socket_for_process(unsigned timeout);
 
 size_t get_nchars_from_file(FILE *fp, size_t n, char *buf, int mode);

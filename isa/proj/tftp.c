@@ -174,7 +174,7 @@ int get_port_from_socket(int socket) {
 void print_info_rrq(struct sockaddr_in src_address, uint16_t mode, char *filepath, tftp_options_t *options) {
     char *ip = inet_ntoa(src_address.sin_addr);
     int port = ntohs(src_address.sin_port);
-    
+
     // RRQ {SRC_IP}:{SRC_PORT} "{FILEPATH}" {MODE} {$OPTS}
     fprintf(stderr, "RRQ %s:%d \"%s\" %s", ip, port, filepath, get_mode_name(mode));
     for (int i = 0; options->order_names[i] != NULL; i++) {
@@ -418,6 +418,22 @@ int parse_req_packet(char *two_buf, char *filename, char *mode_str, char *msg, s
         return 1;
     }
     return 0;
+}
+
+bool set_socket_exp_timeout(int socket, int iter) {
+    struct timeval tv;
+    unsigned timeout = SOCK_TIMEOUT;
+    for (int i = 0; i < iter; i++) {
+        timeout *= 2;
+    }
+    tv.tv_sec = timeout;
+    tv.tv_usec = 0;
+
+    if (setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+        printf("Error setting timeout! \n");
+        return false;
+    }
+    return true;
 }
 
 int create_socket_for_process(unsigned timeout) {
