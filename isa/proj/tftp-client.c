@@ -3,6 +3,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <getopt.h>
+#include <inttypes.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <signal.h>
@@ -147,7 +148,7 @@ void read_req(struct sockaddr_in server_address, int socket) {
     socklen_t addr_len = sizeof(server_address);
     bool to_break = false;
     int prev_client_port;
-    struct in_addr prev_ip = server_address.sin_addr;
+    struct in_addr prev_ip;
     uint16_t block_num = 1;
     bool first_packet = true;
 
@@ -155,7 +156,7 @@ void read_req(struct sockaddr_in server_address, int socket) {
     sending_packet_write:
         for (int i = 0; i < RETRY_SENT_COUNT; i++) {
             if (!set_socket_exp_timeout(socket, i)) { // exponential timeout increase
-                send_error(not_defined, "Error setting timeout! \r\n", server_address, socket);
+                send_error(not_defined, "Error setting timeout!", server_address, socket);
                 fclose(fp);
                 free_and_exit(true);
             }
@@ -179,8 +180,8 @@ void read_req(struct sockaddr_in server_address, int socket) {
                 printf("Recvfrom error or timeout! \n");
                 continue;
             }
-            if (server_address.sin_addr.s_addr != prev_ip.s_addr || (!first_packet && server_address.sin_port != prev_client_port)) {
-                send_error(unknown_tid, "Unknown sender address or TID! \r\n", server_address, socket);
+            if (!first_packet && (server_address.sin_addr.s_addr != prev_ip.s_addr || server_address.sin_port != prev_client_port)) {
+                send_error(unknown_tid, "Unknown sender address or TID!", server_address, socket);
                 server_address.sin_addr = prev_ip;
                 server_address.sin_port = prev_client_port;
                 continue;
@@ -190,15 +191,23 @@ void read_req(struct sockaddr_in server_address, int socket) {
             code = ntohs(code);
             switch (code) {
                 case error_opcode:
+                    uint16_t err_code = short16_from_chars(buf + 2);
+                    err_code = ntohs(code);
+                    print_info_err(server_address, err_code, buf + 4, get_port_from_socket(socket));
+
                     fclose(fp);
                     free_and_exit(true);
                     break;
                 case data_opcode:
-                    if (block_num != ntohs(short16_from_chars(buf + 2))) {
+                    uint16_t packet_block_num = ntohs(short16_from_chars(buf + 2));
+                    print_info_data(server_address, packet_block_num, get_port_from_socket(socket));
+
+                    if (block_num != packet_block_num) {
                         continue;
                     }
                     if (first_packet) {
                         first_packet = false;
+                        prev_ip = server_address.sin_addr;
                         prev_client_port = server_address.sin_port;
                     }
                     to_break = data_size < TFTP_DEFAULT_DATA_SIZE;
@@ -219,7 +228,7 @@ void read_req(struct sockaddr_in server_address, int socket) {
                     break;
                 default:
                     printf("Received packet has unknown opcode! \n");
-                    send_error(illegal_operation, "Wrong request format(unknown opcode)! \r\n", server_address, socket);
+                    send_error(illegal_operation, "Wrong request format(unknown opcode)!", server_address, socket);
                     fclose(fp);
                     free_and_exit(true);
             }
@@ -239,30 +248,33 @@ void write_req(struct sockaddr_in server_address, int socket) {
     socklen_t addr_len = sizeof(server_address);
     bool to_break = false;
     int prev_client_port;
-    struct in_addr prev_ip = server_address.sin_addr;
+    struct in_addr prev_ip;
     uint16_t block_num = 0;
+    size_t data_size;
     bool first_packet = true;
 
     while (1) {
     sending_packet_read:
-        size_t data_size = get_nchars_from_file(fp, TFTP_DEFAULT_DATA_SIZE, buf, mode);
-        printf("sending data of size: %ld \n", data_size);
-        to_break = data_size < TFTP_DEFAULT_DATA_SIZE;
+        if (!first_packet) {
+            data_size = get_nchars_from_file(fp, TFTP_DEFAULT_DATA_SIZE, buf, mode);
+            printf("sending data of size: %ld \n", data_size);
+            to_break = data_size < TFTP_DEFAULT_DATA_SIZE;
+        }
         for (int i = 0; i < RETRY_SENT_COUNT; i++) {
             if (!set_socket_exp_timeout(socket, i)) {
-                send_error(not_defined, "Error setting timeout! \r\n", server_address, socket);
+                send_error(not_defined, "Error setting timeout!", server_address, socket);
                 fclose(fp);
                 free_and_exit(true);
             }
             if (first_packet) {
                 if (send_request(write_req_opcode, args.future_file_path, "octet", server_address, socket) < 0) {
-                    printf("Sendto error! \n");
+                    printf("Sendto error(write req)! \n");
                     continue;
                 }
-            } else {
+            } else if (i == 2) {
                 bytestx = send_data(block_num, buf, data_size, server_address, socket);
                 if (bytestx < 0) {
-                    printf("Sendto error! \n");
+                    printf("Sendto error(send data)! \n");
                     continue;
                 }
             }
@@ -272,8 +284,8 @@ void write_req(struct sockaddr_in server_address, int socket) {
                 printf("Recvfrom error or timeout! \n");
                 continue;
             }
-            if (server_address.sin_addr.s_addr != prev_ip.s_addr || (!first_packet && server_address.sin_port != prev_client_port)) {
-                send_error(unknown_tid, "Unknown sender address or TID! \r\n", server_address, socket);
+            if (!first_packet && (server_address.sin_addr.s_addr != prev_ip.s_addr || server_address.sin_port != prev_client_port)) {
+                send_error(unknown_tid, "Unknown sender address or TID!", server_address, socket);
                 server_address.sin_addr = prev_ip;
                 server_address.sin_port = prev_client_port;
                 continue;
@@ -283,15 +295,22 @@ void write_req(struct sockaddr_in server_address, int socket) {
             code = ntohs(code);
             switch (code) {
                 case error_opcode:
-                    // TODO dolelat print info na mista jako je toto, server i client
+                    uint16_t err_code = short16_from_chars(buf + 2);
+                    err_code = ntohs(code);
+                    print_info_err(server_address, err_code, buf + 4, get_port_from_socket(socket));
+
                     free_and_exit(true);
                     break;
                 case ack_opcode:
-                    if (block_num != ntohs(short16_from_chars(buf + 2))) {
+                    uint16_t packet_block_num = ntohs(short16_from_chars(buf + 2));
+                    print_info_ack(server_address, packet_block_num);
+
+                    if (block_num != packet_block_num) {
                         continue;
                     } else {
                         if (first_packet) {
                             first_packet = false;
+                            prev_ip = server_address.sin_addr;
                             prev_client_port = server_address.sin_port;
                         }
                         if (to_break) {
@@ -309,12 +328,12 @@ void write_req(struct sockaddr_in server_address, int socket) {
                     break;
                 default:
                     printf("Received packet has unknown opcode! \n");
-                    send_error(illegal_operation, "Wrong request format(unknown opcode)! \r\n", server_address, socket);
+                    send_error(illegal_operation, "Wrong request format(unknown opcode)!", server_address, socket);
                     free_and_exit(true);
             }
         }
         // didnt get ack for the RETRY_SENT_COUNTth time -> quiting
-        send_error(not_defined, "Timed out! \r\n", server_address, socket);
+        send_error(not_defined, "Timed out!", server_address, socket);
         free_and_exit(true);
     }
 end_loop_read:

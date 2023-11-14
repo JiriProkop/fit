@@ -1,3 +1,4 @@
+#include <arpa/inet.h>
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
@@ -139,15 +140,14 @@ void tftp_read(struct sockaddr_in client_address, int mode, const char file_path
     char buf[buff_size];
     int process_socket = create_socket_for_process(options.timeout_val);
     if (process_socket < 0) {
-        send_error(not_defined, "Socket creation failed! \r\n", client_address, server_socket);
+        send_error(not_defined, "Socket creation failed!", client_address, server_socket);
         exit(EXIT_FAILURE);
     }
 
     FILE *fp = fopen(file_path, "r");
     if (fp == NULL) {
         printf("Couldn't read the file! (not present or insufficient privileges) %d \n", errno);
-        send_error(file_not_found, "Couldn't read the file! (not present or insufficient privileges)! \r\n", client_address,
-                   process_socket);
+        send_error(file_not_found, "Couldn't read the file! (not present or insufficient privileges)!", client_address, process_socket);
         close_socket_and_exit(true, process_socket);
     }
     set_tsize_value_ifset(fp, &options);
@@ -171,7 +171,7 @@ void tftp_read(struct sockaddr_in client_address, int mode, const char file_path
         }
         for (int i = 0; i < RETRY_SENT_COUNT; i++) {
             if (!options.timeout && !set_socket_exp_timeout(process_socket, i)) { // exponential timeout increase
-                send_error(not_defined, "Error setting timeout! \r\n", client_address, process_socket);
+                send_error(not_defined, "Error setting timeout!", client_address, process_socket);
                 fclose(fp);
                 close_socket_and_exit(true, process_socket);
             }
@@ -193,7 +193,7 @@ void tftp_read(struct sockaddr_in client_address, int mode, const char file_path
             }
             if (client_address.sin_addr.s_addr != prev_ip.s_addr || client_address.sin_port != prev_client_port) {
                 print_info_not_parsed(client_address, buf, bytestx, process_socket);
-                send_error(unknown_tid, "Unknown sender address or TID! \r\n", client_address, process_socket);
+                send_error(unknown_tid, "Unknown sender address or TID!", client_address, process_socket);
                 client_address.sin_addr = prev_ip;
                 client_address.sin_port = prev_client_port;
                 continue;
@@ -238,7 +238,7 @@ void tftp_read(struct sockaddr_in client_address, int mode, const char file_path
             }
         }
         // didnt get ack for the RETRY_SENT_COUNTth time -> quiting
-        send_error(not_defined, "Timed out! \r\n", client_address, process_socket);
+        send_error(not_defined, "Timed out!", client_address, process_socket);
         fclose(fp);
         close_socket_and_exit(true, process_socket);
     }
@@ -262,18 +262,18 @@ void tftp_write(struct sockaddr_in client_address, int mode, const char file_pat
     char buf[buff_size];
     int process_socket = create_socket_for_process(options.timeout_val);
     if (process_socket < 0) {
-        send_error(not_defined, "Socket creation error! \r\n", client_address, server_socket);
+        send_error(not_defined, "Socket creation error!", client_address, server_socket);
         exit(EXIT_FAILURE);
     }
     if (file_already_exists_check(file_path)) {
-        send_error(file_already_exists, "File already exists! \r\n", client_address, process_socket);
+        send_error(file_already_exists, "File already exists!", client_address, process_socket);
         close_socket_and_exit(true, process_socket);
     }
 
     FILE *fp = fopen(file_path, "w");
     if (fp == NULL) {
         printf("Couldn't create the file! (probably insufficient privileges) %d \n", errno);
-        send_error(access_violation, "Couldn't create the file! \r\n", client_address, process_socket);
+        send_error(access_violation, "Couldn't create the file!", client_address, process_socket);
         close_socket_and_exit(true, process_socket);
     }
     int bytestx;
@@ -289,7 +289,7 @@ void tftp_write(struct sockaddr_in client_address, int mode, const char file_pat
     sending_ack_packet_write:
         for (int i = 0; i < RETRY_SENT_COUNT; i++) {
             if (!options.timeout && !set_socket_exp_timeout(process_socket, i)) {
-                send_error(not_defined, "Error setting timeout! \r\n", client_address, process_socket);
+                send_error(not_defined, "Error setting timeout!", client_address, process_socket);
                 fclose(fp);
                 close_socket_and_exit(true, process_socket);
             }
@@ -315,7 +315,7 @@ void tftp_write(struct sockaddr_in client_address, int mode, const char file_pat
             }
             if (client_address.sin_addr.s_addr != prev_ip.s_addr || client_address.sin_port != prev_client_port) {
                 print_info_not_parsed(client_address, buf, bytestx, process_socket);
-                send_error(unknown_tid, "Unknown sender address or TID! \r\n", client_address, process_socket);
+                send_error(unknown_tid, "Unknown sender address or TID!", client_address, process_socket);
                 client_address.sin_addr = prev_ip;
                 client_address.sin_port = prev_client_port;
                 continue;
@@ -326,11 +326,18 @@ void tftp_write(struct sockaddr_in client_address, int mode, const char file_pat
             code = ntohs(code);
             switch (code) {
                 case error_opcode:
+                    uint16_t err_code = short16_from_chars(buf + 2);
+                    err_code = ntohs(code);
+                    print_info_err(client_address, err_code, buf + 4, get_port_from_socket(process_socket));
+
                     fclose(fp);
                     close_socket_and_exit(true, process_socket);
                     break;
                 case data_opcode:
-                    if (block_num + 1 != ntohs(short16_from_chars(buf + 2))) {
+                    uint16_t packet_block_num = ntohs(short16_from_chars(buf + 2));
+                    print_info_data(client_address, packet_block_num, get_port_from_socket(process_socket));
+
+                    if (block_num + 1 != packet_block_num) {
                         continue;
                     }
                     to_break = data_size < max_data_size;
@@ -357,7 +364,7 @@ void tftp_write(struct sockaddr_in client_address, int mode, const char file_pat
             }
         }
         // didnt get ack for the RETRY_SENT_COUNTth time -> quiting
-        send_error(not_defined, "Timed out! \r\n", client_address, process_socket);
+        send_error(not_defined, "Timed out!", client_address, process_socket);
         fclose(fp);
         close_socket_and_exit(true, process_socket);
     }
@@ -386,7 +393,7 @@ void main_loop() {
         close_socket = true;
     }
 
-    printf("Server is running...\n");
+    printf("Server is running at %s:%ld...\n", inet_ntoa(server_addres.sin_addr), args.port);
     int bytesrx;
     char buf[TFTP_DEFAULT_DATA_SIZE + 4];
     struct sockaddr_in client_address;
@@ -404,12 +411,13 @@ void main_loop() {
         char file_path[4096]; // max unix path len
         strcpy(file_path, args.root_path);
         char two_buf[2];
-        int res = parse_req_packet(two_buf, file_path + strlen(args.root_path), mode_str, buf, bytesrx, &options);
+        file_path[strlen(args.root_path)] = '/';
+        int res = parse_req_packet(two_buf, file_path + 1 + strlen(args.root_path), mode_str, buf, bytesrx, &options);
         if (res == 1) {
-            send_error(illegal_operation, "Wrong request format! \r\n", client_address, server_socket);
+            send_error(illegal_operation, "Wrong request format!", client_address, server_socket);
             continue;
         } else if (res == 2) {
-            send_error(option_negotiation_error, "Option error - probably option value error! \r\n", client_address, server_socket);
+            send_error(option_negotiation_error, "Option error - probably option value error!", client_address, server_socket);
             continue;
         }
 
@@ -422,14 +430,14 @@ void main_loop() {
             mode = netascii_mode;
         } else {
             printf("Unknown mode! \n");
-            send_error(not_defined, "Unknown mode! \r\n", client_address, server_socket);
+            send_error(not_defined, "Unknown mode!", client_address, server_socket);
             continue;
         }
 
         pid_t pid = fork();
         if (pid == -1) {
             printf("Fork error! \n");
-            send_error(not_defined, "Creation of process(fork) failed! \r\n", client_address, server_socket);
+            send_error(not_defined, "Creation of process(fork) failed!", client_address, server_socket);
         } else if (pid == 0) {
             if (code == read_req_opcode) {
                 tftp_options_t options_for_print = options;
@@ -443,7 +451,7 @@ void main_loop() {
                 tftp_write(client_address, mode, file_path, options);
             } else {
                 printf("Received packet has unknown opcode! \n");
-                send_error(illegal_operation, "Wrong op code! \r\n", client_address, server_socket);
+                send_error(illegal_operation, "Wrong op code!", client_address, server_socket);
             }
         }
         // terminate any hanging zombie process but don't wait

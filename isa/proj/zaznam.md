@@ -26,4 +26,4 @@ Kdyz mi teda posle packet nekdo cizi - client jakoby prijde o pokus.
 kdyz se nepovede ziskat filesize, server pokracuje bez rozsireni tsize
 
 note: nekontroluju, ze nechodi vic nez by melo. Podle rfc 2347, by to melo byt ok.
-note: zminit, jestli moje implementace zvladne vytvaret slozky
+note: zminit, jestli moje implementace zvladne vytvaret slozky - nezvladne a to je ok
