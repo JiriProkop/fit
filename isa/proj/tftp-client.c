@@ -76,6 +76,7 @@ void parse_args(int argc, char *argv[]) {
         exit(EXIT_SUCCESS);
     }
 
+    char *check;
     int opt;
     while ((opt = getopt(argc, argv, "h:p:f:t:")) != -1) {
         switch (opt) {
@@ -88,7 +89,6 @@ void parse_args(int argc, char *argv[]) {
                 strcpy(args.hostname, optarg);
                 break;
             case 'p':
-                char *check;
                 args.port = strtoul(optarg, &check, 10);
                 if (args.port < 0 || args.port > MAX_PORT_NUM) {
                     printf("Invalid socket number!(must be between 0 and %d)\n", MAX_PORT_NUM + 1);
@@ -157,6 +157,7 @@ void read_req(struct sockaddr_in server_address, int socket) {
         for (int i = 0; i < RETRY_SENT_COUNT; i++) {
             if (!set_socket_exp_timeout(socket, i)) { // exponential timeout increase
                 send_error(not_defined, "Error setting timeout!", server_address, socket);
+                remove(args.future_file_path);
                 fclose(fp);
                 free_and_exit(true);
             }
@@ -187,19 +188,21 @@ void read_req(struct sockaddr_in server_address, int socket) {
                 continue;
             }
             size_t data_size = bytestx - 4;
+            uint16_t err_code;
+            uint16_t packet_block_num;
             uint16_t code = short16_from_chars(buf);
             code = ntohs(code);
             switch (code) {
                 case error_opcode:
-                    uint16_t err_code = short16_from_chars(buf + 2);
+                    err_code = short16_from_chars(buf + 2);
                     err_code = ntohs(code);
                     print_info_err(server_address, err_code, buf + 4, get_port_from_socket(socket));
-
+                    remove(args.future_file_path);
                     fclose(fp);
                     free_and_exit(true);
                     break;
                 case data_opcode:
-                    uint16_t packet_block_num = ntohs(short16_from_chars(buf + 2));
+                    packet_block_num = ntohs(short16_from_chars(buf + 2));
                     print_info_data(server_address, packet_block_num, get_port_from_socket(socket));
 
                     if (block_num != packet_block_num) {
@@ -229,6 +232,7 @@ void read_req(struct sockaddr_in server_address, int socket) {
                 default:
                     printf("Received packet has unknown opcode! \n");
                     send_error(illegal_operation, "Wrong request format(unknown opcode)!", server_address, socket);
+                    remove(args.future_file_path);
                     fclose(fp);
                     free_and_exit(true);
             }
@@ -256,6 +260,7 @@ void write_req(struct sockaddr_in server_address, int socket) {
     while (1) {
     sending_packet_read:
         if (!first_packet) {
+            printf("getting data \n");
             data_size = get_nchars_from_file(fp, TFTP_DEFAULT_DATA_SIZE, buf, mode);
             printf("sending data of size: %ld \n", data_size);
             to_break = data_size < TFTP_DEFAULT_DATA_SIZE;
@@ -271,7 +276,7 @@ void write_req(struct sockaddr_in server_address, int socket) {
                     printf("Sendto error(write req)! \n");
                     continue;
                 }
-            } else if (i == 2) {
+            } else {
                 bytestx = send_data(block_num, buf, data_size, server_address, socket);
                 if (bytestx < 0) {
                     printf("Sendto error(send data)! \n");
@@ -291,18 +296,20 @@ void write_req(struct sockaddr_in server_address, int socket) {
                 continue;
             }
             // check ack, print info
+            uint16_t packet_block_num;
+            uint16_t err_code;
             uint16_t code = short16_from_chars(buf);
             code = ntohs(code);
             switch (code) {
                 case error_opcode:
-                    uint16_t err_code = short16_from_chars(buf + 2);
+                    err_code = short16_from_chars(buf + 2);
                     err_code = ntohs(code);
                     print_info_err(server_address, err_code, buf + 4, get_port_from_socket(socket));
 
                     free_and_exit(true);
                     break;
                 case ack_opcode:
-                    uint16_t packet_block_num = ntohs(short16_from_chars(buf + 2));
+                     packet_block_num = ntohs(short16_from_chars(buf + 2));
                     print_info_ack(server_address, packet_block_num);
 
                     if (block_num != packet_block_num) {

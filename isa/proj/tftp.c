@@ -20,11 +20,6 @@
 
 #include "tftp.h"
 
-// This is used so I can ignore sprintf added '\0'
-#define A_IgnoreOverflow _Pragma("GCC diagnostic push") _Pragma("GCC diagnostic ignored \"-Wformat-overflow=\"")
-
-#define A_Pop _Pragma("GCC diagnostic pop")
-
 uint16_t short16_from_chars(char *buf) {
     union {
         char ch[2];
@@ -43,24 +38,24 @@ extern inline char *short_to_char(uint16_t *short16);
 /*
     @return Returns int < 0 if an error occured
 */
-A_IgnoreOverflow int send_ack(uint16_t block_num, struct sockaddr_in address, int socket) {
+int send_ack(uint16_t block_num, struct sockaddr_in address, int socket) {
     uint16_t op_code = htons((uint16_t)ack_opcode);
     block_num = htons(block_num);
     char *op = short_to_char(&op_code);
     char *block = short_to_char(&block_num);
 
     char msg[ACK_PACKET_SIZE];
-    unsigned check = sprintf(msg, "%c%c%c%c", op[0], op[1], block[0], block[1]);
-    assert(check == ACK_PACKET_SIZE); // FIXME remove before submiting
+    msg[0] = op[0];
+    msg[1] = op[1];
+    msg[2] = block[0];
+    msg[3] = block[1];
     return sendto(socket, msg, ACK_PACKET_SIZE, 0, (struct sockaddr *)&address, sizeof(address));
 }
-A_Pop
 
-    /*
-        @param err_msg Error message in netascii
-    */
-    int
-    send_error(uint16_t err_code, char *err_msg, struct sockaddr_in address, int socket) {
+/*
+    @param err_msg Error message in netascii
+*/
+int send_error(uint16_t err_code, char *err_msg, struct sockaddr_in address, int socket) {
     uint16_t op_code = htons((uint16_t)error_opcode);
     err_code = htons(err_code);
 
@@ -102,7 +97,7 @@ int send_request(uint16_t op_code, char *filename, char *mode, struct sockaddr_i
     unsigned buff_size = strlen(filename) + 1 + strlen(mode) + 1 + sizeof(op_code);
     char msg[buff_size];
     unsigned check = sprintf(msg, "%c%c%s%c%s", op[0], op[1], filename, '\0', mode) + 1; // +1 for the '\0' at the end
-    assert(check == buff_size); // FIXME remove before submiting
+    assert(check == buff_size);                                                          // FIXME remove before submiting
     return sendto(socket, msg, buff_size, 0, (struct sockaddr *)&address, sizeof(address));
 }
 
@@ -143,9 +138,16 @@ int send_0ack(struct sockaddr_in address, int socket, tftp_options_t *options) {
     msg[0] = op[0];
     msg[1] = op[1];
     char *msg_ptr = msg + 2;
-    msg_ptr += sprintf(msg_ptr, "%s%c%zu", "blksize", '\0', options->blksize_val);
-    msg_ptr += sprintf(msg_ptr, "%s%c%zu", "timeout", '\0', options->timeout_val);
-    msg_ptr += sprintf(msg_ptr, "%s%c%zu", "tsize", '\0', options->tsize_val);
+
+    if (options->blksize) {
+        msg_ptr += sprintf(msg_ptr, "%s%c%zu", "blksize", '\0', options->blksize_val) + 1;
+    }
+    if (options->timeout) {
+        msg_ptr += sprintf(msg_ptr, "%s%c%zu", "timeout", '\0', options->timeout_val) + 1;
+    }
+    if (options->tsize) {
+        msg_ptr += sprintf(msg_ptr, "%s%c%zu", "tsize", '\0', options->tsize_val) + 1;
+    }
 
     assert(msg_ptr - msg == buff_size); // FIXME remove before submiting
     return sendto(socket, msg, buff_size, 0, (struct sockaddr *)&address, sizeof(address));
@@ -249,6 +251,7 @@ void print_info_not_parsed(struct sockaddr_in src_address, char *msg, size_t msg
     unsigned word_count;
     size_t i;
     char *start;
+    uint16_t err_code;
 
     switch (code) {
         case oack_opcode:
@@ -274,7 +277,7 @@ void print_info_not_parsed(struct sockaddr_in src_address, char *msg, size_t msg
             break;
 
         case error_opcode:
-            uint16_t err_code = short16_from_chars(msg + 2);
+            err_code = short16_from_chars(msg + 2);
             err_code = ntohs(err_code);
 
             // ERROR {SRC_IP}:{SRC_PORT}:{DST_PORT} {CODE} "{MESSAGE}"
@@ -402,6 +405,20 @@ void init_options(tftp_options_t *options) {
     options->tsize_name = tsize_str;
 }
 
+bool missing_option_value(tftp_options_t *options) {
+    if (options->blksize && options->blksize_val == 0) {
+        printf("Missing blksize option value!! \n");
+        return true;
+    } else if (options->timeout && options->timeout_val == 0) {
+        printf("Missing timeout option value!! \n");
+        return true;
+    } else if (options->tsize && options->tsize_val == 0) {
+        printf("Missing tsize option value!! \n");
+        return true;
+    }
+    return false;
+}
+
 typedef enum {
     read_file_name,
     read_mode,
@@ -473,6 +490,8 @@ int parse_req_packet(char *two_buf, char *filename, char *mode_str, char *msg, s
                         options->tsize = true;
                         options->order_names[option_counter] = options->tsize_name;
                         options->order_vals[option_counter++] = &(options->tsize_val);
+                    } else {
+                        value_for = none;
                     }
                     state = read_option_value;
                 }
@@ -497,12 +516,14 @@ int parse_req_packet(char *two_buf, char *filename, char *mode_str, char *msg, s
                         }
                     } else if (value_for == tsize) {
                         options->tsize_val = atoi(temp);
-                        if (!(options->tsize_val = 0)) {
+                        if (options->tsize_val == 0) {
                             printf("Invalid tsize option value!! \n");
                             return 2;
                         }
                     }
                     state = read_option;
+                } else if (value_for == none) {
+                    break;
                 } else if (isdigit(msg[i])) {
                     temp[temp_i++] = msg[i];
                 } else {
@@ -513,9 +534,11 @@ int parse_req_packet(char *two_buf, char *filename, char *mode_str, char *msg, s
         }
     }
     options->order_names[option_counter] = NULL;
-
+    if (missing_option_value(options)) {
+        return 2;
+    }
     if (msg[i - 1] != '\0') {
-        printf("Wrong packet format! \n");
+        printf("Wrong packet format!\n");
         return 1;
     }
     return 0;

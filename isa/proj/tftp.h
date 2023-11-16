@@ -8,7 +8,7 @@
 #include <sys/types.h>
 
 #define ACK_PACKET_SIZE 4
-#define RETRY_SENT_COUNT 3
+#define RETRY_SENT_COUNT 4
 #define SOCK_TIMEOUT 5
 #define BLOCK_SIZE_MAX 65464
 
