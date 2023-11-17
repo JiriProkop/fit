@@ -1,3 +1,8 @@
+/*
+    Autor: Jiří Prokop, xproko47
+    File: tftp.c
+*/
+
 #include <arpa/inet.h>
 #include <assert.h>
 #include <ctype.h>
@@ -65,7 +70,7 @@ int send_error(uint16_t err_code, char *err_msg, struct sockaddr_in address, int
     unsigned buff_size = sizeof(err_code) + sizeof(op_code) + strlen(err_msg) + 1; // strlen doesn't count the '\0'
     char msg[buff_size];
     unsigned check = sprintf(msg, "%c%c%c%c%s", op[0], op[1], err[0], err[1], err_msg) + 1;
-    assert(check == buff_size); // FIXME remove before submiting
+    // assert(check == buff_size);
     return sendto(socket, msg, buff_size, 0, (struct sockaddr *)&address, sizeof(address));
 }
 
@@ -86,7 +91,7 @@ int send_data(uint16_t block_num, char *data, unsigned data_len, struct sockaddr
     for (i = 4; i < data_len + 4; i++) {
         msg[i] = data[i - 4];
     }
-    assert(i == buff_size); // FIXME remove before submiting
+    // assert(i == buff_size);
     return sendto(socket, msg, buff_size, 0, (struct sockaddr *)&address, sizeof(address));
 }
 
@@ -97,7 +102,7 @@ int send_request(uint16_t op_code, char *filename, char *mode, struct sockaddr_i
     unsigned buff_size = strlen(filename) + 1 + strlen(mode) + 1 + sizeof(op_code);
     char msg[buff_size];
     unsigned check = sprintf(msg, "%c%c%s%c%s", op[0], op[1], filename, '\0', mode) + 1; // +1 for the '\0' at the end
-    assert(check == buff_size);                                                          // FIXME remove before submiting
+    // assert(check == buff_size);
     return sendto(socket, msg, buff_size, 0, (struct sockaddr *)&address, sizeof(address));
 }
 
@@ -149,7 +154,7 @@ int send_0ack(struct sockaddr_in address, int socket, tftp_options_t *options) {
         msg_ptr += sprintf(msg_ptr, "%s%c%zu", "tsize", '\0', options->tsize_val) + 1;
     }
 
-    assert(msg_ptr - msg == buff_size); // FIXME remove before submiting
+    // assert(msg_ptr - msg == buff_size);
     return sendto(socket, msg, buff_size, 0, (struct sockaddr *)&address, sizeof(address));
 }
 
@@ -320,45 +325,6 @@ void print_info_not_parsed(struct sockaddr_in src_address, char *msg, size_t msg
             }
             print_unparsed_options(start, msg_len - i);
             break;
-    }
-}
-
-/*
-    Converts text from ascii to mode. In text_len is returned the new size
-*/
-char *text_to_mode(int mode, char *text, size_t *text_len) {
-    if (mode == octet_mode) {
-        return text;
-    }
-    char *tmp = malloc(*text_len);
-    if (tmp == NULL) {
-        printf("Malloc error! \n");
-        return NULL;
-    }
-    // change each LF to CR LF
-    int added_count = 0;
-    for (size_t i = 0; i < *text_len; i++) {
-        tmp[i + added_count] = text[i];
-        if (text[i] == '\n' || text[i] == '\r') {
-            tmp[i + added_count] = '\r';
-            char *tmp_real = realloc(tmp, (*text_len) + ++added_count);
-            if (tmp_real == NULL) {
-                printf("Malloc error! \n");
-                return NULL;
-            }
-            tmp = tmp_real;
-            tmp[i + added_count] = text[i] == '\n' ? '\n' : '\0';
-        }
-    }
-    // while this if isn't technicaly needed, it returns the original string if there
-    //  was no need to change it, which will reduce damage caused by this fn's error/s
-    if (added_count == 0) {
-        free(tmp);
-        return text;
-    } else {
-        free(text);
-        *text_len = *text_len + added_count;
-        return tmp;
     }
 }
 

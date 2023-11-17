@@ -1,3 +1,8 @@
+/*
+    Autor: Jiří Prokop, xproko47
+    File: tftp-server.c
+*/
+
 #include <arpa/inet.h>
 #include <ctype.h>
 #include <dirent.h>

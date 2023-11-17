@@ -1,3 +1,8 @@
+/*
+    Autor: Jiří Prokop, xproko47
+    File: tftp-client.c
+*/
+
 #include <arpa/inet.h>
 #include <ctype.h>
 #include <dirent.h>

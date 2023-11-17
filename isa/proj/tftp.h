@@ -1,3 +1,8 @@
+/*
+    Autor: Jiří Prokop, xproko47
+    File: tftp.h
+*/
+
 #ifndef _TFTP_H
 #define _TFTP_H
 
