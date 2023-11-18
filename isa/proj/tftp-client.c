@@ -76,7 +76,7 @@ void print_help() {
 }
 
 void parse_args(int argc, char *argv[]) {
-    if (argc == 2 && (!strcmp(argv[1], "--help") || !strcmp(argv[1], "-h"))) {
+    if (argc == 2 && (!strcmp(argv[1], "--help"))) {
         print_help();
         exit(EXIT_SUCCESS);
     }

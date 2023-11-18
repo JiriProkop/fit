@@ -69,8 +69,7 @@ int send_error(uint16_t err_code, char *err_msg, struct sockaddr_in address, int
 
     unsigned buff_size = sizeof(err_code) + sizeof(op_code) + strlen(err_msg) + 1; // strlen doesn't count the '\0'
     char msg[buff_size];
-    unsigned check = sprintf(msg, "%c%c%c%c%s", op[0], op[1], err[0], err[1], err_msg) + 1;
-    // assert(check == buff_size);
+    sprintf(msg, "%c%c%c%c%s", op[0], op[1], err[0], err[1], err_msg);
     return sendto(socket, msg, buff_size, 0, (struct sockaddr *)&address, sizeof(address));
 }
 
@@ -91,7 +90,6 @@ int send_data(uint16_t block_num, char *data, unsigned data_len, struct sockaddr
     for (i = 4; i < data_len + 4; i++) {
         msg[i] = data[i - 4];
     }
-    // assert(i == buff_size);
     return sendto(socket, msg, buff_size, 0, (struct sockaddr *)&address, sizeof(address));
 }
 
@@ -101,8 +99,7 @@ int send_request(uint16_t op_code, char *filename, char *mode, struct sockaddr_i
 
     unsigned buff_size = strlen(filename) + 1 + strlen(mode) + 1 + sizeof(op_code);
     char msg[buff_size];
-    unsigned check = sprintf(msg, "%c%c%s%c%s", op[0], op[1], filename, '\0', mode) + 1; // +1 for the '\0' at the end
-    // assert(check == buff_size);
+    sprintf(msg, "%c%c%s%c%s", op[0], op[1], filename, '\0', mode);
     return sendto(socket, msg, buff_size, 0, (struct sockaddr *)&address, sizeof(address));
 }
 
