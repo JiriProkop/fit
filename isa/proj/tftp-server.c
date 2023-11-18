@@ -203,7 +203,7 @@ void tftp_read(struct sockaddr_in client_address, int mode, const char file_path
     sending_data_packet_read:
         if (!(first_packet && any_option)) {
             data_size = get_nchars_from_file(fp, max_data_size, buf, mode);
-            printf("sending data of size: %ld \n", data_size);
+            printf("sending data of size: %ld to %s\n", data_size, inet_ntoa(client_address.sin_addr));
             to_break = data_size < max_data_size;
         }
         for (int i = 0; i < RETRY_SENT_COUNT; i++) {

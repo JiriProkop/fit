@@ -196,7 +196,7 @@ void read_req(struct sockaddr_in server_address, int socket) {
                     goto end_loop_write;
                 }
             }
-
+            // wait for data
             bytestx = recvfrom(socket, buf, TFTP_DEFAULT_DATA_SIZE + 4, 0, (struct sockaddr *)&server_address, &addr_len);
             if (bytestx < 0) {
                 printf("Recvfrom error or timeout! \n");
@@ -258,6 +258,9 @@ void read_req(struct sockaddr_in server_address, int socket) {
                     free_and_exit(true);
             }
         }
+        remove(args.future_file_path);
+        send_error(not_defined, "Timed out!", server_address, socket);
+        free_and_exit(true);
     }
 end_loop_write:
     fclose(fp);

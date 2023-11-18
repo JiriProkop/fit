@@ -13,7 +13,7 @@
 #include <sys/types.h>
 
 #define ACK_PACKET_SIZE 4
-#define RETRY_SENT_COUNT 4 // number of retries for sending packet
+#define RETRY_SENT_COUNT 3 // number of retries for sending packet
 #define SOCK_TIMEOUT 5     // default timeout for socket in seconds
 #define BLOCK_SIZE_MAX 65464
 
