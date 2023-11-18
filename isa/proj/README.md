@@ -2,15 +2,14 @@
 
 This project encompasses the development of a TFTP (Trivial File Transfer Protocol) suite consisting of a TFTP server (tftp-server) and a TFTP client (tftp-client). The TFTP server is designed to receive and store files from remote clients, while the TFTP client facilitates the downloading and uploading of files to a remote server.
 
-
 ## Project information
 
 - Author name: Jiří Prokop
 - Author login: xproko47
 - Date: 17. 11. 2023
 
-
 ### List of all the files
+
 - tftp-client.c
 - tftp-client.h
 - tftp-server.c
@@ -21,6 +20,10 @@ This project encompasses the development of a TFTP (Trivial File Transfer Protoc
 - README.md
 - manual.pdf
 
+## Limitations
+
+Port number 0 is the default and cannot be entered as an argument due to error handling in `strtoul`.
+
 ## How to run
 
 ### tftp-server
@@ -30,7 +33,7 @@ tftp-server [-p port] root_dirpath
 
 -h, --help:     Print this help message.
 
--p:             Specify the local port on which the server to run on. 
+-p:             Specify the local port on which the server to run on.
                 The default is 69.
 
 root_dirpath:   Path to the directory where incoming files will be saved.
@@ -46,6 +49,8 @@ That's because the port 69 is within
 
 ```
 tftp-client -h hostname [-p port] [-f filepath] -t dest_filepath
+
+--help:     Print this help message.
 
 -h:             IP address/domain name of the remote server.
 
