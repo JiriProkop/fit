@@ -13,15 +13,16 @@
 #include <sys/types.h>
 
 #define ACK_PACKET_SIZE 4
-#define RETRY_SENT_COUNT 4
-#define SOCK_TIMEOUT 5
+#define RETRY_SENT_COUNT 4 // number of retries for sending packet
+#define SOCK_TIMEOUT 5     // default timeout for socket in seconds
 #define BLOCK_SIZE_MAX 65464
 
 #define IP_PROTOCOL 0
 #define MAX_PORT_NUM 65535
 #define TFTP_DEFAULT_SERVER_PORT 69
-#define TFTP_DEFAULT_DATA_SIZE 512
+#define TFTP_DEFAULT_DATA_SIZE 512 // default data packet size
 
+// TFTP packet opcodes
 typedef enum {
     read_req_opcode = 1,
     write_req_opcode,
@@ -31,6 +32,7 @@ typedef enum {
     oack_opcode,
 } packet_opcodes;
 
+// TFTP error codes
 typedef enum {
     not_defined,
     file_not_found,
@@ -43,11 +45,13 @@ typedef enum {
     option_negotiation_error,
 } packet_err_codes;
 
+// supported TFTP modes
 typedef enum {
     netascii_mode,
     octet_mode,
 } modes;
 
+// TFTP options
 typedef struct {
     bool blksize;
     size_t blksize_val;

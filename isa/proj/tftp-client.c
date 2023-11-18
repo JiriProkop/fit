@@ -23,9 +23,7 @@
 
 #include "tftp.h"
 
-#define IP_PROTOCOL 0
-#define MAX_PORT_NUM 65535
-
+// Struct for program arguments.
 typedef struct {
     char *hostname;
     char *to_transfer_file_path; // path to file on server(download) or nothing(upload, stdin is used)
@@ -60,12 +58,18 @@ void free_and_exit(bool failure) {
     }
 }
 
+/*
+    Signal handler for SIGINT
+*/
 void sig_handler(int _) {
     (void)_;
     printf("\nSIGINT received, clearing allocations.\n");
     free_and_exit(false);
 }
 
+/*
+    Prints help.
+*/
 void print_help() {
     printf("Usage: tftp-client -h hostname [-p port] [-f filepath] -t dest_filepath\n");
     printf("  -h   IP address/domain name of the remote server\n");
@@ -75,6 +79,12 @@ void print_help() {
     printf("  -t   Path under which the file will be stored on the remote server or locally\n");
 }
 
+/*
+    Parses program arguments.
+
+    @param argc number of arguments
+    @param argv array of arguments
+*/
 void parse_args(int argc, char *argv[]) {
     if (argc == 2 && (!strcmp(argv[1], "--help"))) {
         print_help();
@@ -142,6 +152,12 @@ void parse_args(int argc, char *argv[]) {
     }
 }
 
+/*
+    Function for read request communication.
+
+    @param server_address server address
+    @param socket socket
+*/
 void read_req(struct sockaddr_in server_address, int socket) {
     char buf[TFTP_DEFAULT_DATA_SIZE + 4]; // without extensions
     FILE *fp = fopen(args.future_file_path, "w");
@@ -248,6 +264,12 @@ end_loop_write:
     free_and_exit(false);
 }
 
+/*
+    Function for write request communication.
+
+    @param server_address server address
+    @param socket socket
+*/
 void write_req(struct sockaddr_in server_address, int socket) {
     char buf[TFTP_DEFAULT_DATA_SIZE + 4];
 
@@ -314,7 +336,7 @@ void write_req(struct sockaddr_in server_address, int socket) {
                     free_and_exit(true);
                     break;
                 case ack_opcode:
-                     packet_block_num = ntohs(short16_from_chars(buf + 2));
+                    packet_block_num = ntohs(short16_from_chars(buf + 2));
                     print_info_ack(server_address, packet_block_num);
 
                     if (block_num != packet_block_num) {
@@ -352,6 +374,9 @@ end_loop_read:
     free_and_exit(false);
 }
 
+/*
+    Setup for communication. Calls read_req or write_req at the end.
+*/
 void logic() {
     struct sockaddr_in server_address;
     server_address.sin_addr.s_addr = INADDR_ANY;

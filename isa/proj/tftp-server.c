@@ -23,6 +23,7 @@
 
 #include "tftp.h"
 
+// Struct for program arguments.
 typedef struct {
     long port;
     char *root_path;
@@ -50,6 +51,12 @@ void free_and_exit(bool failure) {
     }
 }
 
+/*
+    Close given socket and exit.
+
+    @param failure true for EXIT_FAILURE return code, EXIT_SUCCESS otherwise
+    @param socket socket to close
+*/
 void close_socket_and_exit(bool failure, int socket) {
     close(socket);
     if (failure) {
@@ -59,6 +66,9 @@ void close_socket_and_exit(bool failure, int socket) {
     }
 }
 
+/*
+    Prints help.
+*/
 void print_help() {
     printf("Usage: tftp-server [-p port] root_dirpath\n");
     printf("  -h, --help\tPrint this help message\n");
@@ -67,6 +77,12 @@ void print_help() {
     printf("root_dirpath\tPath to the directory where incoming files will be saved\n");
 }
 
+/*
+    Parses program arguments.
+
+    @param argc argument count
+    @param argv argument values
+*/
 void parse_args(int argc, char *argv[]) {
     if (argc == 2) {
         if (!strcmp(argv[1], "--help") || !strcmp(argv[1], "-h")) {
@@ -121,11 +137,20 @@ void parse_args(int argc, char *argv[]) {
     }
 }
 
+/*
+    Signal handler for SIGINT.
+*/
 void sig_handler(int _) {
     (void)_;
     free_and_exit(false);
 }
 
+/*
+    Sets tsize value in options struct if tsize is enabled.
+
+    @param fp file pointer to get size from
+    @param options options
+*/
 void set_tsize_value_ifset(FILE *fp, tftp_options_t *options) {
     if (options->tsize) {
         struct stat st;
@@ -138,6 +163,14 @@ void set_tsize_value_ifset(FILE *fp, tftp_options_t *options) {
     }
 }
 
+/*
+    Function for tftp read communication.
+
+    @param client_address client address
+    @param mode mode of transfer
+    @param file_path path to file to read
+    @param options options
+*/
 void tftp_read(struct sockaddr_in client_address, int mode, const char file_path[], tftp_options_t options) {
     size_t max_data_size = options.blksize ? options.blksize_val : TFTP_DEFAULT_DATA_SIZE;
     size_t buff_size = max_data_size < TFTP_DEFAULT_DATA_SIZE ? TFTP_DEFAULT_DATA_SIZE + 4 : max_data_size + 4;
@@ -253,6 +286,12 @@ end_loop_read:
     close_socket_and_exit(false, process_socket);
 }
 
+/*
+    Checks if file already exists.
+
+    @param file_path path to file
+    @return true if file exists, false otherwise
+*/
 bool file_already_exists_check(const char file_path[]) {
     if (access(file_path, F_OK) == 0) {
         printf("file '%s' already exists \n", file_path);
@@ -261,6 +300,14 @@ bool file_already_exists_check(const char file_path[]) {
     return false;
 }
 
+/*
+    Function for tftp write communication.
+
+    @param client_address client address
+    @param mode mode of transfer
+    @param file_path path to file to read
+    @param options options
+*/
 void tftp_write(struct sockaddr_in client_address, int mode, const char file_path[], tftp_options_t options) {
     size_t max_data_size = options.blksize ? options.blksize_val : TFTP_DEFAULT_DATA_SIZE;
     size_t buff_size = max_data_size < TFTP_DEFAULT_DATA_SIZE ? TFTP_DEFAULT_DATA_SIZE + 4 : max_data_size + 4;
@@ -382,6 +429,9 @@ end_loop_write:
     close_socket_and_exit(false, process_socket);
 }
 
+/*
+    Main loop of the server.
+*/
 void main_loop() {
     struct sockaddr_in server_addres;
     server_addres.sin_family = AF_INET;

@@ -25,6 +25,12 @@
 
 #include "tftp.h"
 
+/*
+    Coverts two characters of a short to an actual uint16_t short
+
+    @param buf pointer to 2 bytes
+    @return uint16_t short
+*/
 uint16_t short16_from_chars(char *buf) {
     union {
         char ch[2];
@@ -36,12 +42,20 @@ uint16_t short16_from_chars(char *buf) {
 }
 
 /*
-    Just changes the goggles with  which compiler looks at the data
+    Convert the short to two characters of short. Basicly just pointer casting.
+
+    @param short16 pointer
+    @return char pointer
 */
 extern inline char *short_to_char(uint16_t *short16);
 
 /*
-    @return Returns int < 0 if an error occured
+    Sends ACK packet to the given address.
+
+    @param block_num Block number
+    @param address Address to send to
+    @param socket Socket to send from
+    @return int < 0 if an error occured, otherwise number of sent bytes
 */
 int send_ack(uint16_t block_num, struct sockaddr_in address, int socket) {
     uint16_t op_code = htons((uint16_t)ack_opcode);
@@ -58,7 +72,13 @@ int send_ack(uint16_t block_num, struct sockaddr_in address, int socket) {
 }
 
 /*
-    @param err_msg Error message in netascii
+    Sends ERROR packet to the given address.
+
+    @param err_code error code
+    @param err_msg error message in netascii
+    @param address Address to send to
+    @param socket Socket to send from
+    @return int < 0 if an error occured, otherwise number of sent bytes
 */
 int send_error(uint16_t err_code, char *err_msg, struct sockaddr_in address, int socket) {
     uint16_t op_code = htons((uint16_t)error_opcode);
@@ -73,6 +93,16 @@ int send_error(uint16_t err_code, char *err_msg, struct sockaddr_in address, int
     return sendto(socket, msg, buff_size, 0, (struct sockaddr *)&address, sizeof(address));
 }
 
+/*
+    Sends DATA packet to the given address.
+
+    @param block_num Block number
+    @param data Data to send
+    @param data_len Length of the data
+    @param address Address to send to
+    @param socket Socket to send from
+    @return int < 0 if an error occured, otherwise number of sent bytes
+*/
 int send_data(uint16_t block_num, char *data, unsigned data_len, struct sockaddr_in address, int socket) {
     uint16_t op_code = htons((uint16_t)data_opcode);
     block_num = htons(block_num);
@@ -93,6 +123,16 @@ int send_data(uint16_t block_num, char *data, unsigned data_len, struct sockaddr
     return sendto(socket, msg, buff_size, 0, (struct sockaddr *)&address, sizeof(address));
 }
 
+/*
+    Sends request packet to the given address.
+
+    @param op_code Operation code
+    @param filename Filename
+    @param mode Mode
+    @param address Address to send to
+    @param socket Socket to send from
+    @return int < 0 if an error occured, otherwise number of sent bytes
+*/
 int send_request(uint16_t op_code, char *filename, char *mode, struct sockaddr_in address, int socket) {
     op_code = htons(op_code);
     char *op = short_to_char(&op_code);
@@ -104,7 +144,10 @@ int send_request(uint16_t op_code, char *filename, char *mode, struct sockaddr_i
 }
 
 /*
-    Including the '\0'
+    Gets the count of characters needed to print number(including the '\0')
+
+    @param num Number
+    @return int Count of characters needed
 */
 int get_char_size_of_num(size_t num) {
     int i = 0;
@@ -114,6 +157,12 @@ int get_char_size_of_num(size_t num) {
     return i + 1;
 }
 
+/*
+    Gets the needed size for sending options.
+
+    @param options Options
+    @return long The needed size for options
+*/
 long get_0ack_buff_size(tftp_options_t *options) {
     long buff_size = 2;
     if (options->blksize) {
@@ -131,6 +180,14 @@ long get_0ack_buff_size(tftp_options_t *options) {
     return buff_size;
 }
 
+/*
+    Sends 0ACK packet to the given address.
+
+    @param address Address to send to
+    @param socket Socket to send from
+    @param options Options
+    @return int < 0 if an error occured, otherwise number of sent bytes
+*/
 int send_0ack(struct sockaddr_in address, int socket, tftp_options_t *options) {
     uint16_t op_code = htons((uint16_t)oack_opcode);
     char *op = short_to_char(&op_code);
@@ -155,6 +212,12 @@ int send_0ack(struct sockaddr_in address, int socket, tftp_options_t *options) {
     return sendto(socket, msg, buff_size, 0, (struct sockaddr *)&address, sizeof(address));
 }
 
+/*
+    Gets the name of the mode.
+
+    @param mode Mode
+    @return char* Name of the mode or empty string if the mode is not known
+*/
 char *get_mode_name(uint16_t mode) {
     if (mode == netascii_mode) {
         return "netascii";
@@ -164,6 +227,12 @@ char *get_mode_name(uint16_t mode) {
     return "";
 }
 
+/*
+    Gets the port number from the socket.
+
+    @param socket Socket
+    @return int Port number or -1 if an error occured
+*/
 int get_port_from_socket(int socket) {
     struct sockaddr_in sin;
     socklen_t len = sizeof(sin);
@@ -175,6 +244,14 @@ int get_port_from_socket(int socket) {
     }
 }
 
+/*
+    Prints the info about the RRQ packet.
+
+    @param src_address Source address
+    @param mode Mode
+    @param filepath Filepath
+    @param options Options
+*/
 void print_info_rrq(struct sockaddr_in src_address, uint16_t mode, char *filepath, tftp_options_t *options) {
     char *ip = inet_ntoa(src_address.sin_addr);
     int port = ntohs(src_address.sin_port);
@@ -187,6 +264,14 @@ void print_info_rrq(struct sockaddr_in src_address, uint16_t mode, char *filepat
     fprintf(stderr, "\n");
 }
 
+/*
+    Prints the info about the WRQ packet.
+
+    @param src_address Source address
+    @param mode Mode
+    @param filepath Filepath
+    @param options Options
+*/
 void print_info_wrq(struct sockaddr_in src_address, uint16_t mode, char *filepath, tftp_options_t *options) {
     char *ip = inet_ntoa(src_address.sin_addr);
     int port = ntohs(src_address.sin_port);
@@ -199,6 +284,12 @@ void print_info_wrq(struct sockaddr_in src_address, uint16_t mode, char *filepat
     fprintf(stderr, "\n");
 }
 
+/*
+    Prints the info about the ACK packet.
+
+    @param src_address Source address
+    @param block_num Block number
+*/
 void print_info_ack(struct sockaddr_in src_address, u_int16_t block_num) {
     char *ip = inet_ntoa(src_address.sin_addr);
     int port = ntohs(src_address.sin_port);
@@ -207,6 +298,14 @@ void print_info_ack(struct sockaddr_in src_address, u_int16_t block_num) {
     fprintf(stderr, "ACK %s:%d %d\n", ip, port, block_num);
 }
 
+/*
+    Prints the info about the ERROR packet.
+
+    @param src_address Source address
+    @param err_code Error code
+    @param err_msg Error message
+    @param own_port Own port number
+*/
 void print_info_err(struct sockaddr_in src_address, uint16_t err_code, char *err_msg, int own_port) {
     char *ip = inet_ntoa(src_address.sin_addr);
     int port = ntohs(src_address.sin_port);
@@ -215,6 +314,13 @@ void print_info_err(struct sockaddr_in src_address, uint16_t err_code, char *err
     fprintf(stderr, "ERROR %s:%d:%d %d \"%s\"\n", ip, port, own_port, err_code, err_msg);
 }
 
+/*
+    Prints the info about the DATA packet.
+
+    @param src_address Source address
+    @param block_num Block number
+    @param own_port Own port number
+*/
 void print_info_data(struct sockaddr_in src_address, u_int16_t block_num, int own_port) {
     char *ip = inet_ntoa(src_address.sin_addr);
     int port = ntohs(src_address.sin_port);
@@ -223,6 +329,12 @@ void print_info_data(struct sockaddr_in src_address, u_int16_t block_num, int ow
     fprintf(stderr, "DATA %s:%d:%d %d\n", ip, port, own_port, block_num);
 }
 
+/*
+    Prints the unparsed options. Used for printing info about unknown(source address wise) tftp packets.
+
+    @param msg Message
+    @param msg_len Length of the message
+*/
 void print_unparsed_options(char *msg, size_t msg_len) {
     unsigned word_count = 0;
     char *start = msg;
@@ -241,6 +353,15 @@ void print_unparsed_options(char *msg, size_t msg_len) {
     fprintf(stderr, "\n");
 }
 
+/*
+    Prints the info about packet that was not parsed.
+    Used for printing info about unknown(source address wise) tftp packets.
+
+    @param src_address Source address
+    @param msg Message
+    @param msg_len Length of the message
+    @param own_socket Own socket
+*/
 void print_info_not_parsed(struct sockaddr_in src_address, char *msg, size_t msg_len, int own_socket) {
     if (msg_len < 4)
         return;
@@ -327,6 +448,10 @@ void print_info_not_parsed(struct sockaddr_in src_address, char *msg, size_t msg
 
 /*
     Change NETASCII to ASCII if needed.
+
+    @param mode Mode
+    @param text Text
+    @param text_len Length of the text
 */
 void text_from_mode(int mode, char *text, size_t text_len) {
     if (mode == octet_mode) {
@@ -350,10 +475,16 @@ void text_from_mode(int mode, char *text, size_t text_len) {
     }
 }
 
+// names of the options
 char blksize_str[] = "blksize";
 char timeout_str[] = "timeout";
 char tsize_str[] = "tsize";
 
+/*
+    Initializes the options.
+
+    @param options Options
+*/
 void init_options(tftp_options_t *options) {
     options->blksize = false;
     options->blksize_val = 0;
@@ -368,6 +499,12 @@ void init_options(tftp_options_t *options) {
     options->tsize_name = tsize_str;
 }
 
+/*
+    Checks if some option is missing its value.
+
+    @param options Options
+    @return bool True if some option is missing its value, false otherwise
+*/
 bool missing_option_value(tftp_options_t *options) {
     if (options->blksize && options->blksize_val == 0) {
         printf("Missing blksize option value!! \n");
@@ -382,6 +519,7 @@ bool missing_option_value(tftp_options_t *options) {
     return false;
 }
 
+// states for parsing the request packet
 typedef enum {
     read_file_name,
     read_mode,
@@ -389,6 +527,7 @@ typedef enum {
     read_option_value,
 } state_enum;
 
+// enum for parsing the option's values
 typedef enum {
     none,
     blksize,
@@ -396,6 +535,19 @@ typedef enum {
     tsize,
 } value_for_enum;
 
+/*
+    Parses the request packet.
+
+    @param two_buf Buffer for the first two bytes of the packet a.k.a. opcode
+    @param filename Filename
+    @param mode_str Mode
+    @param msg Message
+    @param msg_size Length of the message
+    @param options Options
+    @return int 0 if the packet was parsed successfully
+                1 if the packet is in wrong format
+                2 if the packet has invalid option format or value
+*/
 int parse_req_packet(char *two_buf, char *filename, char *mode_str, char *msg, size_t msg_size, tftp_options_t *options) {
     if (msg_size < 4) {
         printf("Wrong packet format! \n");
@@ -507,6 +659,13 @@ int parse_req_packet(char *two_buf, char *filename, char *mode_str, char *msg, s
     return 0;
 }
 
+/*
+    Sets the socket timeout. If iter is non zero it multiplies the timeout by 2^iter.
+
+    @param socket Socket
+    @param iter Iteration
+    @return bool True if the timeout was set successfully, false otherwise
+*/
 bool set_socket_exp_timeout(int socket, int iter) {
     struct timeval tv;
     unsigned timeout = SOCK_TIMEOUT;
@@ -523,6 +682,12 @@ bool set_socket_exp_timeout(int socket, int iter) {
     return true;
 }
 
+/*
+    Creates a socket for the process.
+
+    @param timeout Timeout
+    @return int Socket or -1 if an error occured
+*/
 int create_socket_for_process(unsigned timeout) {
     int process_socket = socket(AF_INET, SOCK_DGRAM, IP_PROTOCOL);
     if (process_socket < 0) {
@@ -542,8 +707,13 @@ int create_socket_for_process(unsigned timeout) {
 }
 
 /*
-    buf is expected to be already allocated to n size
+    Reads n characters from the file.
+    Buf is expected to be already allocated to n size.
 
+    @param fp File pointer
+    @param n Number of characters to read
+    @param buf Buffer to read to
+    @param mode Mode
     @return returns number of read chars
 */
 size_t get_nchars_from_file(FILE *fp, size_t n, char *buf, int mode) {
