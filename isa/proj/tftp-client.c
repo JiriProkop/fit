@@ -174,7 +174,7 @@ void read_req(struct sockaddr_in server_address, int socket) {
     bool first_packet = true;
 
     while (1) {
-    sending_packet_write:
+    client_sending_packet_read:
         for (int i = 0; i < RETRY_SENT_COUNT; i++) {
             if (!set_socket_exp_timeout(socket, i)) { // exponential timeout increase
                 send_error(not_defined, "Error setting timeout!", server_address, socket);
@@ -188,12 +188,12 @@ void read_req(struct sockaddr_in server_address, int socket) {
                     continue;
                 }
             } else {
-                if (send_ack(block_num, server_address, socket) < 0) {
+                if (send_ack(block_num - 1, server_address, socket) < 0) {
                     printf("Sendto error! \n");
                     continue;
                 }
                 if (to_break) {
-                    goto end_loop_write;
+                    goto client_end_loop_read;
                 }
             }
             // wait for data
@@ -243,7 +243,7 @@ void read_req(struct sockaddr_in server_address, int socket) {
                         fputc(buf[4 + j], fp);
                     }
                     block_num++;
-                    goto sending_packet_write;
+                    goto client_sending_packet_read;
                 case oack_opcode:
                 case ack_opcode:
                 case read_req_opcode:
@@ -262,7 +262,7 @@ void read_req(struct sockaddr_in server_address, int socket) {
         send_error(not_defined, "Timed out!", server_address, socket);
         free_and_exit(true);
     }
-end_loop_write:
+client_end_loop_read:
     fclose(fp);
     free_and_exit(false);
 }
@@ -288,7 +288,7 @@ void write_req(struct sockaddr_in server_address, int socket) {
     bool first_packet = true;
 
     while (1) {
-    sending_packet_read:
+    client_sending_packet_write:
         if (!first_packet) {
             printf("getting data \n");
             data_size = get_nchars_from_file(fp, TFTP_DEFAULT_DATA_SIZE, buf, mode);
@@ -351,10 +351,10 @@ void write_req(struct sockaddr_in server_address, int socket) {
                             prev_client_port = server_address.sin_port;
                         }
                         if (to_break) {
-                            goto end_loop_read; // this was the last packet, we can leave
+                            goto client_end_loop_write; // this was the last packet, we can leave
                         }
                         block_num++;
-                        goto sending_packet_read;
+                        goto client_sending_packet_write;
                     }
                     break;
                 case oack_opcode:
@@ -373,7 +373,7 @@ void write_req(struct sockaddr_in server_address, int socket) {
         send_error(not_defined, "Timed out!", server_address, socket);
         free_and_exit(true);
     }
-end_loop_read:
+client_end_loop_write:
     free_and_exit(false);
 }
 

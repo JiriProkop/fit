@@ -203,7 +203,6 @@ void tftp_read(struct sockaddr_in client_address, int mode, const char file_path
     sending_data_packet_read:
         if (!(first_packet && any_option)) {
             data_size = get_nchars_from_file(fp, max_data_size, buf, mode);
-            printf("sending data of size: %ld to %s\n", data_size, inet_ntoa(client_address.sin_addr));
             to_break = data_size < max_data_size;
         }
         for (int i = 0; i < RETRY_SENT_COUNT; i++) {
@@ -213,6 +212,7 @@ void tftp_read(struct sockaddr_in client_address, int mode, const char file_path
                 close_socket_and_exit(true, process_socket);
             }
             if (!(first_packet && any_option)) {
+                printf("sending data of size: %ld to %s\n", data_size, inet_ntoa(client_address.sin_addr));
                 bytestx = send_data(block_num, buf, data_size, client_address, process_socket);
             } else {
                 bytestx = send_0ack(client_address, process_socket, &options);
@@ -281,7 +281,7 @@ void tftp_read(struct sockaddr_in client_address, int mode, const char file_path
         close_socket_and_exit(true, process_socket);
     }
 end_loop_read:
-    printf("READINF OF %s DONE \n", file_path);
+    printf("READING OF %s DONE \n", file_path);
     fclose(fp);
     close_socket_and_exit(false, process_socket);
 }
