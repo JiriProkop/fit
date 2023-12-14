@@ -1,5 +1,5 @@
 
-const brokerUrl = 'ws://broker.hivemq.com:8000/mqtt';
+const brokerUrl = 'wss://broker.emqx.io:8084/mqtt';
 const topicToSubscribe = '/lightsense-xproko47/data';
 const thresholdTopic = '/lightsense-xproko47/set_threshold';
 

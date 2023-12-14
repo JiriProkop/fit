@@ -1,0 +1,142 @@
+% Autor: Dominik Harmim <xharmi00@stud.fit.vutbr.cz>
+
+
+\documentclass[a4paper, 11pt]{article}
+
+
+\usepackage[czech]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[left=2cm, top=2cm, text={17cm, 25cm}]{geometry}
+\usepackage{times}
+\usepackage{graphicx}
+\usepackage[unicode, hypertexnames=false]{hyperref}
+
+
+\begin{document}
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Titulek %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+			\begin{center}
+				{\Large
+					Vysoké učení technické v~Brně \\
+					Fakulta informačních technologií \\
+				}
+				{\includegraphics[width=0.4 \linewidth]{inc/FIT_logo.pdf}} \\
+
+				{\LARGE
+					Mikroprocesorové a~vestavěné systémy \\
+					Projekt\,--\,Spínání světla dle intenzity \\[0.4cm]
+				}
+
+				{\large
+					Jiří Prokop (xproko47) \\
+					\texttt{xproko47@stud.fit.vutbr.cz} \\
+					\today
+				}
+			\end{center}
+	
+
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Úvod %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	\section{Úvod}
+
+        Cílem tohoto projektu bylo měřit úroveň svitu a podle toho nastavovat úroveň svitu 
+        diody. Aplikace měla být uživatelsky nastavitelná. K přenosu hodnot byl určen protokol 
+        MQTT.
+        \newline
+        Video s představením funkcionality lze nalézt zde: \url{https://drive.google.com/file/d/1RucK6XKDmvDGQYvzlt_hCG0MdMJrHIEZ/view?usp=sharing}
+
+
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Hardware %%%%%%%%%%%%%%%%%%%%%%%%%
+        \section{HW součástky}
+        \subsection{WeMos D2 R32 UNO ESP32}
+            Deska integruje bezdrátový WiFi modul s čipem ESP-32 a zároveň obsahuje USB rozhraní pro napájení a 
+            programování. Komunikaci zajišťuje řadič CH340. Samotný modul ESP-32 je vybaven 32bitovým 
+            mikroprocesorem a nabízí mnoho GPIO pinů pro různé funkce dle naprogramovaného kódu.
+
+
+        \subsection{BH1750}
+            Snímač intenzity osvětlení BH1750 spolu s modulem senzoru osvětlení GY-302 určený pro mikrokontrolery.
+            
+
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Zapojení hardware %%%%%%%%%%%%%%%%%%%%%%%%%
+	\section{Příprava}
+
+
+        \subsection{Zapojení}
+	   \textbf{BH-1750} \\
+            Sensor intenzity světla BH-1750 má 5 pinů z čehož stačilo zapojit pouze 4. Zapojil jsem je následovně:
+            \begin{itemize}
+                \item GND (ground) do pinu GND na esp32.
+                \item SCL (clock) do SCL na esp
+                \item SDA (data) do SDA na esp
+                \item VCC (zdroj) do 3V3.
+            \end{itemize}
+            Zmíněným pátým nevyužitým pinem je ADDR, jehož zapojení záleží na použité konfiguraci senzoru.
+            
+          \vspace{6pt}
+          \textbf{LED} \newline
+          LED dioda je zapojena do analogového pinu IO2 a má připojený rezistor.
+ 
+        \subsection{Vývojové prostředí}
+        Při nastavování vývojového prostředí jsem následoval návod \cite{instalace_navod}, který byl k nalezení v
+        IS VUT. Tímto bych za poskytnutí návodu chtěl poděkovat.
+
+ 
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Způsob řešení %%%%%%%%%%%%%%%%%%%%%%%%%
+	\section{Způsob řešení}
+            Projekt je implementován v jediném souboru main.c.
+            Hlavní funkce programu je definována jako app\_main(). V této funkci jsou provedeny následující kroky:
+            Inicializace LEDC pro ovládání LED.
+            Inicializace Non-Volatile Storage (NVS) pro ukládání konfiguračních dat.
+            Připojení k Wi-Fi síti pomocí funkce wifi\_connection(). Program čeká, dokud není získána IP adresa z 
+            Wi-Fi.
+            Načtení hraniční hodnoty pro LEDC z NVS nebo použití default hodnoty.
+            Inicializace I2C pro komunikaci s periferiemi.
+            Spuštění MQTT klienta pomocí funkce mqtt\_app\_start().
+            Následně jsou v nekonečné smyčce odesílána sensorová data přes MQTT. Program získává hodnotu intenzity 
+            světla ze senzoru pomocí funkce get\_data\_from\_sensor(). Pokud je hodnota -1, nastala chyba a čeká se na další měření. 
+            Jinak je hodnota konvertována na řetězec a odeslána přes MQTT klienta. Intenzita světla je pak také použita pro nastavení jasu LED.
+            Nakonec je ještě krátké čekání a smyčka se opakuje.
+            
+
+        \subsection{Konfigurace BH1750}
+            Při konfiguraci jsem se řídil manuálem k této součástce \cite{sensor_svetla}. Jako mód jsem vybral
+            'Continuously H-Resolution Mode', který zde byl doporučen. Při této konfiguraci je možno ze sensoru 
+            snímat nové hodnoty jednou za 120ms. V programu jsem se ale rozhodl snímat je pouze jednou za 500ms,
+            z důvodu zpoždění zasílaných MQTT zpráv. Při snímání každých 120ms se totiž často stávalo, že se
+            zpráva nestihla odeslat včas, takže se jich následně odeslalo několik zároveň.
+
+            V implementaci ostatních konfiguračních parametrů jsem se řídil podle přídladu uvedeného v dokumentaci
+            ESP-IDF \cite{sensor_setup_example}.
+
+        \subsection{Nastavení diody}
+            Při nastavování pinů diody a při testování správnosti jejího zapojení jsem se inspiroval v 
+            dokumentaci ESP-IDF \cite{led_blink}. Při následném nastavování svítivosti zase v programovacím
+            návodu ESP-IDF \cite{led_control}. 
+            % TODO
+
+        \subsection{Připojení k WiFi a využití NVS}
+            Pro připojení k síti WiFi jsem rovněž využil dokumentace ESP-IDF \cite{wifi}.
+            Stejně tak pro nastudování, jak použít Non-Volatile Storage (NVS) k permanentnímu uložení dat 
+            \cite{nvs_example}.
+
+        \subsection{MQTT a uživatelské rozhraní}
+            MQTT představuje jednoduchý protokol pro síťovou komunikaci typu 
+            publish-subscribe mezi zařízeními (machine to machine) s funkcionalitou fronty zpráv. Je navržen pro 
+            spojení s vzdálenými místy, kde existují zařízení s omezenými zdroji nebo omezenou šířkou pásma, jako 
+            například v tomto projektu.
+
+            Komunikaci přes MQTT jsem implementoval díky programovacímu návodu ESP-IDF \cite{mqtt}. Jako brokera jsem použil
+            zdarma testovací službu EMQ \cite{mqtt_broker}.
+
+            Jak již bylo dříve zmíněno, pomocí MQTT se odesílá každá naměřená hodnota. 
+            Tu si přečte klient
+            uživatelského rozhraní a zobrazí ji uživatelovi. Uživatel zde také může nastavit prahovou hodnotu pro
+            spuštění diody. Po tom co ji esp obdrží ji pomocí NVS uloží do paměti a začne ji používat.
+            
+            Uživatelské rozhraní lze nalézt na této adrese: \url{https://www.stud.fit.vutbr.cz/~xproko47/IMP/}.
+            
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Citace %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        \newpage
+	\bibliographystyle{czechiso}
+	\renewcommand{\refname}{Literatura}
+	\bibliography{documentation}
+\end{document}
