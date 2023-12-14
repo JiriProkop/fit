@@ -146,7 +146,7 @@ void parse_args(int argc, char *argv[]) {
         printf("-h and -t arguments are required! \n");
         print_help();
         free_and_exit(true);
-    } else if (args.future_file_path != NULL && access(args.future_file_path, F_OK) == 0) {
+    } else if (args.future_file_path != NULL && args.to_transfer_file_path == NULL && access(args.future_file_path, F_OK) == 0) {
         printf("File '%s' already exists \n", args.future_file_path);
         free_and_exit(true);
     }
